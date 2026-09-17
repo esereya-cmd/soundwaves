@@ -1,0 +1,6 @@
+@Soundwaves.Api_HostAddress = http://localhost:5072
+
+GET {{Soundwaves.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
