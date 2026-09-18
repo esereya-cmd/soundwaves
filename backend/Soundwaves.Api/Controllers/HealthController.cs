@@ -6,6 +6,10 @@ namespace Soundwaves.Api.Controllers
     [Route("api/health")]
     public class HealthController : ControllerBase
     {
-        
+    [HttpGet]
+        public IActionResult GetHealth()
+        {
+            return Ok("Soundwaves API is healthy!");
+        }
     }
 }
