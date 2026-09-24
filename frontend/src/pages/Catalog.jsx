@@ -1,6 +1,11 @@
 import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
-import { mockSongs, mockAlbums } from "../data/mockCatalog";
+import ArtistCard from "../components/media/ArtistCard";
+import {
+  mockSongs,
+  mockAlbums,
+  mockArtists,
+} from "../data/mockCatalog";
 
 function Catalog() {
   return (
@@ -34,6 +39,13 @@ function Catalog() {
 
       <section>
         <h2>Artists</h2>
+
+        {mockArtists.map((artist) => (
+          <ArtistCard
+            key={artist.id}
+            name={artist.name}
+          />
+        ))}
       </section>
     </main>
   );
