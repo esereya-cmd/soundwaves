@@ -1,6 +1,6 @@
 function AlbumCard({ title, artist }) {
   return (
-    <article>
+    <article className="catalog-card">
       <h3>{title}</h3>
       <p>{artist}</p>
     </article>

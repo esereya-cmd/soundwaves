@@ -1,6 +1,6 @@
 function ArtistCard({ name }) {
   return (
-    <article>
+    <article className="catalog-card">
       <h3>{name}</h3>
     </article>
   );
