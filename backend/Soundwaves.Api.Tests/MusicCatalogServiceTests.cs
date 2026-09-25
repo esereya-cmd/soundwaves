@@ -1,10 +1,33 @@
-﻿namespace Soundwaves.Api.Tests;
+﻿using Soundwaves.Api.Services;
+
+namespace Soundwaves.Api.Tests;
 
 public class MusicCatalogServiceTests
 {
     [Fact]
-    public void TestInfrastructure_IsWorking()
+    public void GetTrackById_ReturnsTrack_WhenTrackExists()
     {
-        Assert.True(true);
+        // Arrange
+        var service = new MusicCatalogService();
+
+        // Act
+        var result = service.GetTrackById(1);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal((ulong)1, result.Id);
+    }
+
+    [Fact]
+    public void GetTrackById_ReturnsNull_WhenTrackDoesNotExist()
+    {
+        // Arrange
+        var service = new MusicCatalogService();
+
+        // Act
+        var result = service.GetTrackById(999);
+
+        // Assert
+        Assert.Null(result);
     }
 }
