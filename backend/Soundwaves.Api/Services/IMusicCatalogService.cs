@@ -8,4 +8,5 @@ public interface IMusicCatalogService
     Track? GetTrackById(ulong id);
     IEnumerable<Artist> GetArtists();
     IEnumerable<Album> GetAlbums();
+    IEnumerable<Track> SearchTracks(string query);
 }
