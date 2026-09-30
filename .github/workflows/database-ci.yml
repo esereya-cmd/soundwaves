@@ -1,0 +1,44 @@
+name: Database Schema Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend-database/**"
+
+jobs:
+  validate-database:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend-database
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create database environment file
+        run: cp .env.example .env
+
+      - name: Start database
+        run: docker compose up -d
+
+      - name: Wait for MySQL
+        run: docker compose exec -T db sh -s < database/scripts/wait-for-db.sh
+
+      - name: Validate database schema
+        run: |
+          count=$(docker compose exec -T db sh -c \
+            'mysql -N -s -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+            < database/scripts/validate_schema.sql | tail -n 1)
+
+          echo "Required tables found: $count"
+
+          if [ "$count" -lt 9 ]; then
+            echo "Database validation failed: expected 9 required tables."
+            exit 1
+          fi
+
+          echo "Database validation passed."
