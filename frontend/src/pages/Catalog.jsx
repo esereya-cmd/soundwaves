@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
+
 import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
 import ArtistCard from "../components/media/ArtistCard";
 
 import {
-  mockSongs,
   mockAlbums,
   mockArtists,
 } from "../data/mockCatalog";
@@ -11,6 +12,15 @@ import {
 import "../styles/catalog.css";
 
 function Catalog({ onSelectSong }) {
+  const [tracks, setTracks] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/tracks")
+      .then((response) => response.json())
+      .then((data) => setTracks(data))
+      .catch((error) => console.error("Error loading tracks:", error));
+  }, []);
+
   return (
     <main className="catalog-page">
       <h1>Music Catalog</h1>
@@ -19,13 +29,13 @@ function Catalog({ onSelectSong }) {
         <h2>Songs</h2>
 
         <div className="catalog-grid">
-          {mockSongs.map((song) => (
+          {tracks.map((track) => (
             <SongCard
-              key={song.id}
-              title={song.title}
-              artist={song.artist}
-              album={song.album}
-              onSelect={() => onSelectSong(song)}
+              key={track.id}
+              title={track.title}
+              artistId={track.artistId}
+              albumId={track.albumId}
+              onSelect={() => onSelectSong(track)}
             />
           ))}
         </div>
