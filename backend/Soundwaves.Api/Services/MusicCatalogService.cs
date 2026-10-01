@@ -61,4 +61,17 @@ public class MusicCatalogService : IMusicCatalogService
     {
         return _albums;
     }
+    public IEnumerable<Track> SearchTracks(string query)
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        return Enumerable.Empty<Track>();
+    }
+
+    return _tracks.Where(track =>
+        track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        _artists.Any(artist =>
+            artist.Id == track.ArtistId &&
+            artist.Name.Contains(query, StringComparison.OrdinalIgnoreCase)));
+}
 }
