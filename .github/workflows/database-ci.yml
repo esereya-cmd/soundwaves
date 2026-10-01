@@ -42,3 +42,25 @@ jobs:
           fi
 
           echo "Database validation passed."
+
+                - name: Load development seed data
+        run: |
+          docker compose exec -T db sh -c \
+            'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+            < database/seeds/001_dev_seed.sql
+
+      - name: Validate development seed data
+        run: |
+          results=$(docker compose exec -T db sh -c \
+            'mysql -N -s -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+            < database/scripts/validate_seed_data.sql)
+
+          echo "$results"
+
+          if echo "$results" | grep -q '^0$'; then
+            echo "Seed data validation failed: one or more expected records were not found."
+            exit 1
+          fi
+
+          echo "Seed data validation passed."
+
