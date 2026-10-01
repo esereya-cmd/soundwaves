@@ -10,7 +10,7 @@ import {
 
 import "../styles/catalog.css";
 
-function Catalog() {
+function Catalog({ onSelectSong }) {
   return (
     <main className="catalog-page">
       <h1>Music Catalog</h1>
@@ -25,6 +25,7 @@ function Catalog() {
               title={song.title}
               artist={song.artist}
               album={song.album}
+              onSelect={() => onSelectSong(song)}
             />
           ))}
         </div>
