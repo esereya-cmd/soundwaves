@@ -43,7 +43,7 @@ jobs:
 
           echo "Database validation passed."
 
-                - name: Load development seed data
+      - name: Load development seed data
         run: |
           docker compose exec -T db sh -c \
             'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
@@ -63,4 +63,4 @@ jobs:
           fi
 
           echo "Seed data validation passed."
-
+          
