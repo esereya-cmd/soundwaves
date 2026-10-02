@@ -21,8 +21,13 @@ public class SongsController : ControllerBase
         {
             return BadRequest("A search query is required.");
         }
+        
+        if (query.Trim().Length < 2)
+        {
+            return BadRequest("Search query must be at least 2 characters long.");
+        }
 
-        var results = _musicCatalogService.SearchTracks(query);
+        var results = _musicCatalogService.SearchTracks(query.Trim());
 
         return Ok(results);
     }
