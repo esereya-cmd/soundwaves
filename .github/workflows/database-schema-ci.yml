@@ -1,0 +1,104 @@
+name: Database CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - "database/**"
+      - ".github/workflows/database-ci.yml"
+
+jobs:
+  validate-database:
+    name: Validate MySQL Schema
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: soundwave
+
+        ports:
+          - 3306:3306
+
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -prootpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping \
+              -h 127.0.0.1 \
+              -P 3306 \
+              -uroot \
+              -prootpassword \
+              --silent; then
+              echo "MySQL is ready"
+              exit 0
+            fi
+
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+          echo "MySQL did not start"
+          exit 1
+
+      - name: Apply database schema
+        run: |
+          mysql \
+            -h 127.0.0.1 \
+            -P 3306 \
+            -uroot \
+            -prootpassword \
+            soundwave \
+            < database/schema.sql
+
+      - name: Seed test data
+        run: |
+          mysql \
+            -h 127.0.0.1 \
+            -P 3306 \
+            -uroot \
+            -prootpassword \
+            soundwave \
+            < database/seed.sql
+
+      - name: Validate database schema
+        run: |
+          mysql \
+            -h 127.0.0.1 \
+            -P 3306 \
+            -uroot \
+            -prootpassword \
+            soundwave \
+            < database/tests/validate_schema.sql
+
+      - name: Verify tables exist
+        run: |
+          mysql \
+            -h 127.0.0.1 \
+            -P 3306 \
+            -uroot \
+            -prootpassword \
+            -e "USE soundwave; SHOW TABLES;"
