@@ -13,6 +13,7 @@ import "../styles/catalog.css";
 
 function Catalog({ onSelectSong }) {
   const [tracks, setTracks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetch("/api/tracks")
@@ -21,9 +22,40 @@ function Catalog({ onSelectSong }) {
       .catch((error) => console.error("Error loading tracks:", error));
   }, []);
 
+  function handleSearch() {
+    if (searchQuery.trim() === "") {
+      fetch("/api/tracks")
+        .then((response) => response.json())
+        .then((data) => setTracks(data))
+        .catch((error) => console.error("Error loading tracks:", error));
+
+      return;
+    }
+
+    fetch(`/api/songs/search?query=${encodeURIComponent(searchQuery)}`)
+      .then((response) => response.json())
+      .then((data) => setTracks(data))
+      .catch((error) => console.error("Error searching tracks:", error));
+  }
+
   return (
     <main className="catalog-page">
       <h1>Music Catalog</h1>
+
+      <section className="catalog-section">
+        <h2>Search Music</h2>
+
+        <input
+          type="text"
+          placeholder="Search by song or artist"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+
+        <button type="button" onClick={handleSearch}>
+          Search
+        </button>
+      </section>
 
       <section className="catalog-section">
         <h2>Songs</h2>
