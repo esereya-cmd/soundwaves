@@ -6,8 +6,8 @@ on:
       - main
     paths:
       - "backend-database/**"
-        - ".github/workflows/database-ci.yml" 
-
+      - ".github/workflows/database-ci.yml"
+      
 jobs:
   validate-database:
     runs-on: ubuntu-latest
