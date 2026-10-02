@@ -22,4 +22,18 @@ public class TracksController : ControllerBase
 
         return Ok(tracks);
     }
+
+     [HttpGet("{id}")]
+    public ActionResult<Track> GetTrackById(ulong id)
+    {
+        var track = _musicCatalogService.GetTrackById(id);
+
+        if (track == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(track);
+    }
 }
+
