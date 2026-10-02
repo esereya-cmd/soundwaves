@@ -14,7 +14,7 @@ on:
     paths:
       - "backend-database/**"
       - "backend-database/docker-compose.yml"
-      - ".github/workflows/database-ci.yml"
+      - ".github/workflows/database-schema-ci.yml"
 
 jobs:
 
