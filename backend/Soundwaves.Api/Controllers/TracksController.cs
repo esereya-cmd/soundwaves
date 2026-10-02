@@ -24,16 +24,21 @@ public class TracksController : ControllerBase
     }
 
      [HttpGet("{id}")]
-    public ActionResult<Track> GetTrackById(ulong id)
+public ActionResult<Track> GetTrackById(ulong id)
+{
+    if (id == 0)
     {
-        var track = _musicCatalogService.GetTrackById(id);
-
-        if (track == null)
-        {
-            return NotFound();
-        }
-
-        return Ok(track);
+        return BadRequest("Track ID must be greater than 0.");
     }
+
+    var track = _musicCatalogService.GetTrackById(id);
+
+    if (track == null)
+    {
+        return NotFound();
+    }
+
+    return Ok(track);
+}
 }
 
