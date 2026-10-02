@@ -1,104 +1,161 @@
-name: Database CI
+name: Soundwave Database CI
 
 on:
   push:
     branches:
       - main
       - develop
+
   pull_request:
     branches:
       - main
       - develop
+
     paths:
-      - "database/**"
+      - "backend-database/**"
+      - "backend-database/docker-compose.yml"
       - ".github/workflows/database-ci.yml"
 
 jobs:
-  validate-database:
-    name: Validate MySQL Schema
+
+  database-validation:
+
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.4
-
-        env:
-          MYSQL_ROOT_PASSWORD: rootpassword
-          MYSQL_DATABASE: soundwave
-
-        ports:
-          - 3306:3306
-
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -uroot -prootpassword"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install MySQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mysql-client
 
-      - name: Wait for MySQL
+      - name: Start Soundwave database
+        run: |
+          docker compose up -d database
+
+
+      - name: Wait for database
         run: |
           for i in {1..30}; do
-            if mysqladmin ping \
-              -h 127.0.0.1 \
-              -P 3306 \
-              -uroot \
-              -prootpassword \
-              --silent; then
-              echo "MySQL is ready"
+
+            STATUS=$(docker inspect \
+              --format='{{.State.Health.Status}}' \
+              soundwave-db 2>/dev/null || echo "starting")
+
+            echo "Database status: $STATUS"
+
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Database is ready"
               exit 0
             fi
 
-            echo "Waiting for MySQL..."
             sleep 2
+
           done
 
-          echo "MySQL did not start"
+          echo "Database failed to become healthy"
+          docker compose logs database
           exit 1
 
-      - name: Apply database schema
+
+      - name: Show database tables
         run: |
-          mysql \
-            -h 127.0.0.1 \
-            -P 3306 \
+          docker exec soundwave-db \
+            mysql \
             -uroot \
             -prootpassword \
             soundwave \
-            < database/schema.sql
+            -e "SHOW TABLES;"
 
-      - name: Seed test data
+
+      - name: Validate required tables
         run: |
-          mysql \
-            -h 127.0.0.1 \
-            -P 3306 \
+
+          ARTISTS=$(docker exec soundwave-db \
+            mysql \
             -uroot \
             -prootpassword \
             soundwave \
-            < database/seed.sql
+            -N \
+            -s \
+            -e "
+              SELECT COUNT(*)
+              FROM information_schema.tables
+              WHERE table_schema='soundwave'
+              AND table_name='artists';
+            ")
 
-      - name: Validate database schema
-        run: |
-          mysql \
-            -h 127.0.0.1 \
-            -P 3306 \
+          ALBUMS=$(docker exec soundwave-db \
+            mysql \
             -uroot \
             -prootpassword \
             soundwave \
-            < database/tests/validate_schema.sql
+            -N \
+            -s \
+            -e "
+              SELECT COUNT(*)
+              FROM information_schema.tables
+              WHERE table_schema='soundwave'
+              AND table_name='albums';
+            ")
 
-      - name: Verify tables exist
-        run: |
-          mysql \
-            -h 127.0.0.1 \
-            -P 3306 \
+          SONGS=$(docker exec soundwave-db \
+            mysql \
             -uroot \
             -prootpassword \
-            -e "USE soundwave; SHOW TABLES;"
+            soundwave \
+            -N \
+            -s \
+            -e "
+              SELECT COUNT(*)
+              FROM information_schema.tables
+              WHERE table_schema='soundwave'
+              AND table_name='songs';
+            ")
+
+
+          if [ "$ARTISTS" != "1" ]; then
+            echo "ERROR: artists table missing"
+            exit 1
+          fi
+
+
+          if [ "$ALBUMS" != "1" ]; then
+            echo "ERROR: albums table missing"
+            exit 1
+          fi
+
+
+          if [ "$SONGS" != "1" ]; then
+            echo "ERROR: songs table missing"
+            exit 1
+          fi
+
+
+          echo "All required database tables exist."
+
+
+      - name: Validate seed data
+        run: |
+
+          docker exec soundwave-db \
+            mysql \
+            -uroot \
+            -prootpassword \
+            soundwave \
+            -e "
+              SELECT COUNT(*) AS artist_count FROM artists;
+              SELECT COUNT(*) AS album_count FROM albums;
+              SELECT COUNT(*) AS song_count FROM songs;
+            "
+
+
+      - name: Show database logs on failure
+        if: failure()
+        run: |
+          docker compose logs database
+
+
+      - name: Stop database
+        if: always()
+        run: |
+          docker compose down -v
