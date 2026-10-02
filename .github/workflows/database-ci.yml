@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "backend-database/**"
+        - ".github/workflows/database-ci.yml" 
 
 jobs:
   validate-database:
@@ -16,6 +17,13 @@ jobs:
         working-directory: backend-database
 
     steps:
+    - name: Set build version
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          build_id="build-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${short_sha}"
+          echo "BUILD_ID=$build_id" >> "$GITHUB_ENV"
+          echo "Build ID: $build_id"
+          echo "Build commit: $GITHUB_SHA"
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -63,4 +71,3 @@ jobs:
           fi
 
           echo "Seed data validation passed."
-          
