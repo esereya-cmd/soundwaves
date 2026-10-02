@@ -7,7 +7,7 @@ on:
     paths:
       - "backend-database/**"
       - ".github/workflows/database-ci.yml"
-      
+
 jobs:
   validate-database:
     runs-on: ubuntu-latest
@@ -17,13 +17,18 @@ jobs:
         working-directory: backend-database
 
     steps:
-    - name: Set build version
+      - name: Set build version
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_ATTEMPT: ${{ github.run_attempt }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          short_sha="${GITHUB_SHA::7}"
-          build_id="build-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${short_sha}"
+          short_sha=$(echo "$COMMIT_SHA" | cut -c1-7)
+          build_id="build-${BUILD_NUMBER}.${BUILD_ATTEMPT}-${short_sha}"
           echo "BUILD_ID=$build_id" >> "$GITHUB_ENV"
           echo "Build ID: $build_id"
-          echo "Build commit: $GITHUB_SHA"
+          echo "Build commit: $COMMIT_SHA"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
