@@ -17,6 +17,9 @@ jobs:
         working-directory: backend-database
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set build version
         env:
           BUILD_NUMBER: ${{ github.run_number }}
@@ -28,9 +31,6 @@ jobs:
           echo "BUILD_ID=$build_id" >> "$GITHUB_ENV"
           echo "Build ID: $build_id"
           echo "Build commit: $COMMIT_SHA"
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Create database environment file
         run: cp .env.example .env
