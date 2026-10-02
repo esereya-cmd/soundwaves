@@ -15,7 +15,7 @@ builder.Services.AddDbContext<SoundwavesDbContext>(options =>
         connectionString,
         ServerVersion.AutoDetect(connectionString)));
 
-builder.Services.AddSingleton<IMusicCatalogService, MusicCatalogService>();
+builder.Services.AddScoped<IMusicCatalogService, MusicCatalogService>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

@@ -1,4 +1,5 @@
 using Soundwaves.Api.Models;
+using Soundwaves.Api.Data;
 
 namespace Soundwaves.Api.Services;
 
@@ -42,6 +43,13 @@ public class MusicCatalogService : IMusicCatalogService
         }
     };
 
+    private readonly SoundwavesDbContext _dbContext;
+
+    public MusicCatalogService(SoundwavesDbContext dbContext)
+    {
+    _dbContext = dbContext;
+    }
+
     public IEnumerable<Track> GetTracks()
     {
         return _tracks;
@@ -49,7 +57,7 @@ public class MusicCatalogService : IMusicCatalogService
 
     public Track? GetTrackById(ulong id)
     {
-        return _tracks.FirstOrDefault(track => track.Id == id);
+        return _dbContext.Tracks.FirstOrDefault(track => track.Id == id);
     }
 
     public IEnumerable<Artist> GetArtists()
