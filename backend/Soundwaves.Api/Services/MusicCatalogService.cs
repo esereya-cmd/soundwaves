@@ -1,4 +1,5 @@
 using Soundwaves.Api.Models;
+using Microsoft.EntityFrameworkCore;
 using Soundwaves.Api.Data;
 
 namespace Soundwaves.Api.Services;
@@ -60,26 +61,67 @@ public class MusicCatalogService : IMusicCatalogService
         return _dbContext.Tracks.FirstOrDefault(track => track.Id == id);
     }
 
-    public IEnumerable<Artist> GetArtists()
+    public async Task<IEnumerable<Artist>> GetArtistsAsync()
     {
-        return _artists;
+        return await _dbContext.Artists
+            .AsNoTracking()
+            .ToListAsync();
     }
 
-    public IEnumerable<Album> GetAlbums()
+    public async Task<IEnumerable<Album>> GetAlbumsAsync()
+        {
+            return await _dbContext.Albums
+                .AsNoTracking()
+                .ToListAsync();
+        }
+    public async Task<Album?> GetAlbumByIdAsync(ulong id)
     {
-        return _albums;
+        return await _dbContext.Albums
+            .AsNoTracking()
+            .FirstOrDefaultAsync(album => album.Id == id);
     }
+
+    public async Task<Artist?> GetArtistByIdAsync(ulong id)
+    {
+        return await _dbContext.Artists
+            .AsNoTracking()
+            .FirstOrDefaultAsync(artist => artist.Id == id);
+    }
+    public async Task<IEnumerable<Album>> GetAlbumsByArtistIdAsync(ulong artistId)
+    {
+        return await _dbContext.Albums
+            .AsNoTracking()
+            .Where(album => album.ArtistId == artistId)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Track>> GetTracksByAlbumIdAsync(ulong albumId)
+    {
+        return await _dbContext.Tracks
+            .AsNoTracking()
+            .Where(track => track.AlbumId == albumId)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Track>> GetTracksByArtistIdAsync(ulong artistId)
+    {
+        return await _dbContext.Tracks
+            .AsNoTracking()
+            .Where(track => track.ArtistId == artistId)
+            .ToListAsync();
+    }
+
     public IEnumerable<Track> SearchTracks(string query)
-{
-    if (string.IsNullOrWhiteSpace(query))
     {
-        return Enumerable.Empty<Track>();
-    }
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Enumerable.Empty<Track>();
+        }
 
-    return _tracks.Where(track =>
-        track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-        _artists.Any(artist =>
-            artist.Id == track.ArtistId &&
-            artist.Name.Contains(query, StringComparison.OrdinalIgnoreCase)));
-}
+        return _tracks.Where(track =>
+            track.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            _artists.Any(artist =>
+                artist.Id == track.ArtistId &&
+                artist.Name.Contains(query, StringComparison.OrdinalIgnoreCase)));
+    }
 }
