@@ -1,41 +1,87 @@
+
 import { useEffect, useState } from "react";
 
 import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
 import ArtistCard from "../components/media/ArtistCard";
 
-import {
-  mockAlbums,
-  mockArtists,
-} from "../data/mockCatalog";
+import { mockAlbums, mockArtists } from "../data/mockCatalog";
 
 import "../styles/catalog.css";
 
 function Catalog({ onSelectSong }) {
   const [tracks, setTracks] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/tracks")
-      .then((response) => response.json())
-      .then((data) => setTracks(data))
-      .catch((error) => console.error("Error loading tracks:", error));
-  }, []);
+    let active = true;
 
-  function handleSearch() {
-    if (searchQuery.trim() === "") {
-      fetch("/api/tracks")
-        .then((response) => response.json())
-        .then((data) => setTracks(data))
-        .catch((error) => console.error("Error loading tracks:", error));
+    async function loadTracks() {
+      try {
+        const response = await fetch("/api/tracks");
 
-      return;
+        if (!response.ok) {
+          throw new Error("Failed to load tracks");
+        }
+
+        const data = await response.json();
+
+        if (active) {
+          setTracks(data);
+          setError("");
+        }
+      } catch (err) {
+        console.error("Error loading tracks:", err);
+
+        if (active) {
+          setError("Unable to load songs. Please try again later.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
     }
 
-    fetch(`/api/songs/search?query=${encodeURIComponent(searchQuery)}`)
-      .then((response) => response.json())
-      .then((data) => setTracks(data))
-      .catch((error) => console.error("Error searching tracks:", error));
+    loadTracks();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleSearch(event) {
+    if (event) {
+      event.preventDefault();
+    }
+
+    setLoading(true);
+    setError("");
+
+    const query = searchQuery.trim();
+
+    const url = query
+      ? `/api/songs/search?query=${encodeURIComponent(query)}`
+      : "/api/tracks";
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch songs");
+      }
+
+      const data = await response.json();
+
+      setTracks(data);
+    } catch (err) {
+      console.error("Error searching tracks:", err);
+      setError("Unable to load songs. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -45,32 +91,45 @@ function Catalog({ onSelectSong }) {
       <section className="catalog-section">
         <h2>Search Music</h2>
 
-        <input
-          type="text"
-          placeholder="Search by song or artist"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
+        <form onSubmit={handleSearch}>
+          <input
+            type="text"
+            placeholder="Search by song or artist"
+            aria-label="Search music"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
 
-        <button type="button" onClick={handleSearch}>
-          Search
-        </button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Loading..." : "Search"}
+          </button>
+        </form>
       </section>
 
       <section className="catalog-section">
         <h2>Songs</h2>
 
-        <div className="catalog-grid">
-          {tracks.map((track) => (
-            <SongCard
-              key={track.id}
-              title={track.title}
-              artistId={track.artistId}
-              albumId={track.albumId}
-              onSelect={() => onSelectSong(track)}
-            />
-          ))}
-        </div>
+        {loading && <p>Loading songs...</p>}
+
+        {error && <p role="alert">{error}</p>}
+
+        {!loading && !error && tracks.length === 0 && (
+          <p>No songs available.</p>
+        )}
+
+        {!loading && !error && tracks.length > 0 && (
+          <div className="catalog-grid">
+            {tracks.map((track) => (
+              <SongCard
+                key={track.id}
+                title={track.title}
+                artistId={track.artistId}
+                albumId={track.albumId}
+                onSelect={() => onSelectSong(track)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="catalog-section">
