@@ -1,41 +1,168 @@
+
 .catalog-page {
-  min-height: 100vh;
-  padding: 40px;
-  background-color: #0f172a;
-  color: #f8fafc;
+    min-height: 100vh;
+    background-color: #0f172a;
+    color: #ffffff;
+    padding: 40px 30px;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
 }
+
 
 .catalog-page h1 {
-  font-size: 36px;
-  margin-bottom: 40px;
+    color: #ffffff;
+    text-align: center;
+    font-size: 36px;
+    margin: 20px 0 40px;
 }
 
+
 .catalog-section {
-  margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 .catalog-section h2 {
-  font-size: 24px;
-  margin-bottom: 20px;
+    color: #ffffff;
+    font-size: 26px;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.catalog-section form {
+    display: flex;
+    gap: 10px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.catalog-section input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 15px;
+    font-size: 16px;
+    color: #111827;
+    background-color: #ffffff;
+    border: 1px solid #475569;
+    border-radius: 8px;
+}
+
+.catalog-section input:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+.catalog-section button {
+    padding: 12px 22px;
+    font-size: 16px;
+    color: #ffffff;
+    background-color: #2563eb;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.catalog-section button:hover {
+    background-color: #1d4ed8;
+}
+
+.catalog-section button:disabled {
+    background-color: #64748b;
+    cursor: not-allowed;
 }
 
 .catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 250px), 1fr)
+    );
+    gap: 20px;
 }
 
-.catalog-card {
-  background-color: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
+
+.catalog-grid > * {
+    background-color: #1e293b;
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    transition: transform 0.2s ease,
+                background-color 0.2s ease;
 }
 
-.catalog-card h3 {
-  margin: 0 0 10px;
+.catalog-grid > *:hover {
+    background-color: #334155;
+    transform: translateY(-3px);
 }
 
-.catalog-card p {
-  margin: 4px 0;
-  color: #cbd5e1;
+.catalog-grid h3,
+.catalog-grid h4 {
+    color: #ffffff;
+    margin-top: 0;
+}
+
+.catalog-grid p {
+    color: #cbd5e1;
+}
+
+
+.catalog-section > p {
+    color: #cbd5e1;
+    font-size: 16px;
+    margin: 15px 0;
+}
+
+.catalog-section p[role="alert"] {
+    color: #fca5a5;
+}
+
+@media (max-width: 768px) {
+    .catalog-page {
+        padding: 25px 20px;
+    }
+
+    .catalog-page h1 {
+        font-size: 30px;
+    }
+
+    .catalog-section h2 {
+        font-size: 23px;
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(
+            auto-fit,
+            minmax(min(100%, 200px), 1fr)
+        );
+    }
+}
+
+@media (max-width: 480px) {
+    .catalog-page {
+        padding: 20px 15px;
+    }
+
+    .catalog-page h1 {
+        font-size: 28px;
+    }
+
+    .catalog-section h2 {
+        font-size: 21px;
+    }
+
+    .catalog-section form {
+        flex-direction: column;
+    }
+
+    .catalog-section input,
+    .catalog-section button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .catalog-grid {
+        grid-template-columns: 1fr;
+    }
 }
