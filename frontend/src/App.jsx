@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Catalog from "./pages/Catalog";
 import SongDetails from "./pages/SongDetails";
@@ -8,7 +9,7 @@ function App() {
   if (selectedSong) {
     return (
       <SongDetails
-        song={selectedSong}
+        songId={selectedSong.id}
         onBack={() => setSelectedSong(null)}
       />
     );

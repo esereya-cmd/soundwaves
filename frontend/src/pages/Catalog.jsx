@@ -53,9 +53,7 @@ function Catalog({ onSelectSong }) {
   }, []);
 
   async function handleSearch(event) {
-    if (event) {
-      event.preventDefault();
-    }
+    event.preventDefault();
 
     setLoading(true);
     setError("");
@@ -74,7 +72,6 @@ function Catalog({ onSelectSong }) {
       }
 
       const data = await response.json();
-
       setTracks(data);
     } catch (err) {
       console.error("Error searching tracks:", err);
