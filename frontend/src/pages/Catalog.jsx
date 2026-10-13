@@ -9,7 +9,7 @@ import { mockAlbums, mockArtists } from "../data/mockCatalog";
 
 import "../styles/catalog.css";
 
-function Catalog({ onSelectSong }) {
+function Catalog({ onSelectSong, onSelectAlbum }) {
   const [tracks, setTracks] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -141,6 +141,7 @@ function Catalog({ onSelectSong }) {
               key={album.id}
               title={album.title}
               artist={album.artist}
+              onSelect={() => onSelectAlbum(album)}
             />
           ))}
         </div>
