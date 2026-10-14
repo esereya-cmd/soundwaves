@@ -21,7 +21,7 @@ function App() {
   if (selectedSong) {
     return (
       <SongDetails
-        song={selectedSong}
+        songId={selectedSong.id}
         onBack={() => setSelectedSong(null)}
       />
     );
