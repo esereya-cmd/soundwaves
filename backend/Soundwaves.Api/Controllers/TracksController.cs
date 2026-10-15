@@ -16,12 +16,12 @@ public class TracksController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<Track>> GetTracks()
-    {
-        var tracks = _musicCatalogService.GetTracks();
+public async Task<ActionResult<IEnumerable<Track>>> GetTracks()
+{
+    var tracks = await _musicCatalogService.GetTracksAsync();
 
-        return Ok(tracks);
-    }
+    return Ok(tracks);
+}
 
      [HttpGet("{id}")]
 public ActionResult<Track> GetTrackById(ulong id)
