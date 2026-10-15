@@ -5,12 +5,13 @@ import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
 import ArtistCard from "../components/media/ArtistCard";
 
-import { mockAlbums, mockArtists } from "../data/mockCatalog";
-
 import "../styles/catalog.css";
 
 function Catalog({ onSelectSong, onSelectAlbum }) {
   const [tracks, setTracks] = useState([]);
+  const [albums, setAlbums] = useState([]);
+  const [artists, setArtists] = useState([]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -18,25 +19,38 @@ function Catalog({ onSelectSong, onSelectAlbum }) {
   useEffect(() => {
     let active = true;
 
-    async function loadTracks() {
+    async function loadCatalog() {
       try {
-        const response = await fetch("/api/tracks");
+        const [tracksResponse, albumsResponse, artistsResponse] =
+          await Promise.all([
+            fetch("/api/tracks"),
+            fetch("/api/albums"),
+            fetch("/api/artists")
+          ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to load tracks");
+        if (
+          !tracksResponse.ok ||
+          !albumsResponse.ok ||
+          !artistsResponse.ok
+        ) {
+          throw new Error("Failed to load music catalog");
         }
 
-        const data = await response.json();
+        const tracksData = await tracksResponse.json();
+        const albumsData = await albumsResponse.json();
+        const artistsData = await artistsResponse.json();
 
         if (active) {
-          setTracks(data);
+          setTracks(tracksData);
+          setAlbums(albumsData);
+          setArtists(artistsData);
           setError("");
         }
       } catch (err) {
-        console.error("Error loading tracks:", err);
+        console.error("Error loading catalog:", err);
 
         if (active) {
-          setError("Unable to load songs. Please try again later.");
+          setError("Unable to load music catalog. Please try again later.");
         }
       } finally {
         if (active) {
@@ -45,7 +59,7 @@ function Catalog({ onSelectSong, onSelectAlbum }) {
       }
     }
 
-    loadTracks();
+    loadCatalog();
 
     return () => {
       active = false;
@@ -132,23 +146,37 @@ function Catalog({ onSelectSong, onSelectAlbum }) {
       <section className="catalog-section">
         <h2>Albums</h2>
 
+        {!loading && albums.length === 0 && (
+          <p>No albums available.</p>
+        )}
+
         <div className="catalog-grid">
-          {mockAlbums.map((album) => (
-            <AlbumCard
-              key={album.id}
-              title={album.title}
-              artist={album.artist}
-              onSelect={() => onSelectAlbum(album)}
-            />
-          ))}
+          {albums.map((album) => {
+            const artist = artists.find(
+              (artist) => artist.id === album.artistId
+            );
+
+            return (
+              <AlbumCard
+                key={album.id}
+                title={album.title}
+                artist={artist?.name ?? "Unknown Artist"}
+                onSelect={() => onSelectAlbum(album)}
+              />
+            );
+          })}
         </div>
       </section>
 
       <section className="catalog-section">
         <h2>Artists</h2>
 
+        {!loading && artists.length === 0 && (
+          <p>No artists available.</p>
+        )}
+
         <div className="catalog-grid">
-          {mockArtists.map((artist) => (
+          {artists.map((artist) => (
             <ArtistCard
               key={artist.id}
               name={artist.name}
