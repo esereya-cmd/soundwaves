@@ -10,6 +10,8 @@ public interface IMusicCatalogService
 
     // Existing search operation
     IEnumerable<Track> SearchTracks(string query);
+    // Expanded asynchronous catalog search
+    Task<CatalogSearchResult> SearchCatalogAsync(string query);
 
     // Asynchronous album operations
     Task<IEnumerable<Album>> GetAlbumsAsync();
