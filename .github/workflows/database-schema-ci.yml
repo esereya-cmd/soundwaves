@@ -37,25 +37,10 @@ jobs:
           ADMINER_PORT=8080
           EOF
 
-      - name: Start Soundwave database
-        run: docker compose up -d db
+       - name: Start Soundwave database
+        run: docker compose up -d --wait db
 
-      - name: Wait for database
-        run: |
-          for i in {1..60}; do
-            if docker compose exec -T database sh -c \
-              'MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1;"' > /dev/null 2>&1; then
-              echo "Database is ready"
-              exit 0
-            fi
 
-            echo "Waiting for database..."
-            sleep 2
-          done
-
-          echo "Database failed to become ready"
-          docker compose logs db
-          exit 1
 
       - name: Show database tables
         run: |
