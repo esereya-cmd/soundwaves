@@ -1,3 +1,4 @@
+
 name: Soundwave Database CI
 
 on:
@@ -5,157 +6,73 @@ on:
     branches:
       - main
       - develop
-
   pull_request:
     branches:
       - main
       - develop
-
     paths:
       - "backend-database/**"
-      - "backend-database/docker-compose.yml"
-      - ".github/workflows/database-ci.yml"
+      - ".github/workflows/database-schema-ci.yml"
 
 jobs:
-
   database-validation:
-
     runs-on: ubuntu-latest
 
-    steps:
+    defaults:
+      run:
+        working-directory: backend-database
 
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      - name: Start Soundwave database
+      - name: Create test database environment
         run: |
-          docker compose up -d database
+          cat > .env <<'EOF'
+          MYSQL_ROOT_PASSWORD=ci_root_password
+          MYSQL_DATABASE=soundwave
+          MYSQL_USER=soundwave
+          MYSQL_PASSWORD=ci_test_password
+          MYSQL_PORT=3306
+          ADMINER_PORT=8080
+          EOF
 
+       - name: Start Soundwave database
+        run: docker compose up -d --wait db
 
-      - name: Wait for database
-        run: |
-          for i in {1..30}; do
-
-            STATUS=$(docker inspect \
-              --format='{{.State.Health.Status}}' \
-              soundwave-db 2>/dev/null || echo "starting")
-
-            echo "Database status: $STATUS"
-
-            if [ "$STATUS" = "healthy" ]; then
-              echo "Database is ready"
-              exit 0
-            fi
-
-            sleep 2
-
-          done
-
-          echo "Database failed to become healthy"
-          docker compose logs database
-          exit 1
 
 
       - name: Show database tables
         run: |
-          docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -e "SHOW TABLES;"
-
+          docker compose exec -T db sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES;"'
 
       - name: Validate required tables
         run: |
+          for table in artists albums tracks; do
+            docker compose exec -T db sh -c \
+              "MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql -N -s -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '$table';\"")
 
-          ARTISTS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='artists';
-            ")
+            if [ "$count" != "1" ]; then
+              echo "ERROR: Required table $table is missing"
+              exit 1
+            fi
 
-          ALBUMS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='albums';
-            ")
-
-          SONGS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='songs';
-            ")
-
-
-          if [ "$ARTISTS" != "1" ]; then
-            echo "ERROR: artists table missing"
-            exit 1
-          fi
-
-
-          if [ "$ALBUMS" != "1" ]; then
-            echo "ERROR: albums table missing"
-            exit 1
-          fi
-
-
-          if [ "$SONGS" != "1" ]; then
-            echo "ERROR: songs table missing"
-            exit 1
-          fi
-
-
-          echo "All required database tables exist."
-
+            echo "PASS: $table exists"
+          done
 
       - name: Validate seed data
         run: |
+          docker compose exec -T db sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"' \
+            < database/scripts/validate_seed_data.sql
 
-          docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -e "
-              SELECT COUNT(*) AS artist_count FROM artists;
-              SELECT COUNT(*) AS album_count FROM albums;
-              SELECT COUNT(*) AS song_count FROM songs;
-            "
-
+          echo "Database seed validation completed"
 
       - name: Show database logs on failure
         if: failure()
-        run: |
-          docker compose logs database
-
+        run: docker compose logs db
 
       - name: Stop database
         if: always()
-        run: |
-          docker compose down -v
+        run: docker compose down -v
