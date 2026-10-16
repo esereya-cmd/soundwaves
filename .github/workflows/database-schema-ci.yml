@@ -74,11 +74,27 @@ jobs:
             echo "PASS foreign key: $table.$column -> $parent"
           done
 
+      - name: Load development seed from database/seeds
+        run: |
+          set -eu
+          seed="database/seeds/002_dev_seed.sql"
+          if [ ! -f "$seed" ]; then
+            seed="database/seeds/002_dev_seed_fixed.sql"
+          fi
+          if [ ! -f "$seed" ]; then
+            echo "FAIL: Missing database/seeds/002_dev_seed.sql (or 002_dev_seed_fixed.sql)"
+            exit 1
+          fi
+          echo "Loading seed data from $seed"
+          docker compose exec -T db sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"' < "$seed"
+          echo "PASS: Seed SQL loaded"
+
       - name: Validate catalog seed data and relationships
         run: |
           set -eu
           db_query() { docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'; }
-          # Seed files under database/init are applied automatically on first startup.
+          # Seed data was loaded explicitly from database/seeds in the prior step.
           # Fail instead of silently accepting an empty or inconsistent catalog.
           for table in artists albums tracks; do
             count=$(printf 'SELECT COUNT(*) FROM %s;\n' "$table" | db_query)
