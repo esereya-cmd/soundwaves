@@ -26,3 +26,6 @@ jobs:
 
       - name: Build backend
         run: dotnet build backend/Soundwaves.Api/Soundwaves.Api.csproj --configuration Release --no-restore
+
+      - name: Run backend automated tests
+        run: dotnet test backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj --configuration Release
