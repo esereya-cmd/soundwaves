@@ -22,7 +22,6 @@ WHERE t.title = 'Demo Track'
   AND a.title = 'Demo Album'
   AND ar.name = 'Demo Artist';
 
-
 -- SCRUM-99: Automated seed data validation
 
 -- Remove an old procedure if one already exists
