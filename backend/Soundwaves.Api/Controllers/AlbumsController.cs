@@ -16,6 +16,14 @@ public class AlbumsController : ControllerBase
         _musicCatalogService = musicCatalogService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetAlbums()
+    {
+        var albums = await _musicCatalogService.GetAlbumsAsync();
+
+        return Ok(albums);
+    }
+    
     [HttpGet("{id}")]
     public async Task<ActionResult<AlbumDetailsResponse>> GetAlbumById(ulong id)
     {
