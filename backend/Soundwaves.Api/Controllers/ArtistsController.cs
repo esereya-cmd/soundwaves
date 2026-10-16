@@ -16,6 +16,14 @@ public class ArtistsController : ControllerBase
         _musicCatalogService = musicCatalogService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetArtists()
+    {
+        var artists = await _musicCatalogService.GetArtistsAsync();
+
+        return Ok(artists);
+    }
+    
     [HttpGet("{id}")]
     public async Task<ActionResult<ArtistDetailsResponse>> GetArtistById(ulong id)
     {
