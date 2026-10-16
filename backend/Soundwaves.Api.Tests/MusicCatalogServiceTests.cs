@@ -247,6 +247,25 @@ public class MusicCatalogServiceTests
 
         Assert.Empty(results);
     }
+    
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Nonexistent Song")]
+    public void SearchTracks_ReturnsEmpty_WhenNoValidMatchesExist(
+        string query)
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var service = new MusicCatalogService(dbContext);
+
+        // Act
+        var results = service.SearchTracks(query);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
     [Theory]
     [InlineData("sample track")]
     [InlineData("SAMPLE TRACK")]
