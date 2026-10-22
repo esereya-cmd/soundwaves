@@ -247,4 +247,41 @@ public class MusicCatalogServiceTests
 
         Assert.Empty(results);
     }
+    
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Nonexistent Song")]
+    public void SearchTracks_ReturnsEmpty_WhenNoValidMatchesExist(
+        string query)
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var service = new MusicCatalogService(dbContext);
+
+        // Act
+        var results = service.SearchTracks(query);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
+    [Theory]
+    [InlineData("sample track")]
+    [InlineData("SAMPLE TRACK")]
+    [InlineData("Sample Artist")]
+    public void SearchTracks_ReturnsMatchingTrack_ForExistingSearchBehavior(
+        string query)
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var service = new MusicCatalogService(dbContext);
+
+        // Act
+        var results = service.SearchTracks(query).ToList();
+
+        // Assert
+        Assert.Single(results);
+        Assert.Equal("Sample Track", results[0].Title);
+    }
 }

@@ -51,10 +51,12 @@ public class MusicCatalogService : IMusicCatalogService
     _dbContext = dbContext;
     }
 
-    public IEnumerable<Track> GetTracks()
-    {
-        return _tracks;
-    }
+    public async Task<IEnumerable<Track>> GetTracksAsync()
+{
+    return await _dbContext.Tracks
+        .AsNoTracking()
+        .ToListAsync();
+}
 
     public Track? GetTrackById(ulong id)
     {
@@ -123,5 +125,37 @@ public class MusicCatalogService : IMusicCatalogService
             _artists.Any(artist =>
                 artist.Id == track.ArtistId &&
                 artist.Name.Contains(query, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public async Task<CatalogSearchResult> SearchCatalogAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return new CatalogSearchResult();
+        }
+
+        query = query.Trim();
+
+        var tracks = await _dbContext.Tracks
+            .AsNoTracking()
+            .Where(track => track.Title.Contains(query))
+            .ToListAsync();
+
+        var albums = await _dbContext.Albums
+            .AsNoTracking()
+            .Where(album => album.Title.Contains(query))
+            .ToListAsync();
+
+        var artists = await _dbContext.Artists
+            .AsNoTracking()
+            .Where(artist => artist.Name.Contains(query))
+            .ToListAsync();
+
+        return new CatalogSearchResult
+        {
+            Tracks = tracks,
+            Albums = albums,
+            Artists = artists
+        };
     }
 }
