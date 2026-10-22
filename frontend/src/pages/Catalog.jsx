@@ -5,14 +5,12 @@ import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
 import ArtistCard from "../components/media/ArtistCard";
 
-import { mockAlbums, mockArtists } from "../data/mockCatalog";
-
 import "../styles/catalog.css";
 
 function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
   const [tracks, setTracks] = useState([]);
-  const [albums, setAlbums] = useState(mockAlbums);
-  const [artists, setArtists] = useState(mockArtists);
+  const [albums, setAlbums] = useState([]);
+  const [artists, setArtists] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
@@ -23,25 +21,38 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
   useEffect(() => {
     let active = true;
 
-    async function loadTracks() {
+    async function loadCatalog() {
       try {
-        const response = await fetch("/api/tracks");
+        const [tracksResponse, albumsResponse, artistsResponse] =
+          await Promise.all([
+            fetch("/api/tracks"),
+            fetch("/api/albums"),
+            fetch("/api/artists")
+          ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to load tracks");
+        if (
+          !tracksResponse.ok ||
+          !albumsResponse.ok ||
+          !artistsResponse.ok
+        ) {
+          throw new Error("Failed to load music catalog");
         }
 
-        const data = await response.json();
+        const tracksData = await tracksResponse.json();
+        const albumsData = await albumsResponse.json();
+        const artistsData = await artistsResponse.json();
 
         if (active) {
-          setTracks(data);
+          setTracks(tracksData);
+          setAlbums(albumsData);
+          setArtists(artistsData);
           setError("");
         }
       } catch (err) {
-        console.error("Error loading tracks:", err);
+        console.error("Error loading catalog:", err);
 
         if (active) {
-          setError("Unable to load songs. Please try again later.");
+          setError("Unable to load music catalog. Please try again later.");
         }
       } finally {
         if (active) {
@@ -50,7 +61,7 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
       }
     }
 
-    loadTracks();
+    loadCatalog();
 
     return () => {
       active = false;
@@ -72,18 +83,29 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
 
     try {
       if (query === "") {
-        const response = await fetch("/api/tracks");
+        const [tracksResponse, albumsResponse, artistsResponse] =
+    await Promise.all([
+      fetch("/api/tracks"),
+      fetch("/api/albums"),
+      fetch("/api/artists")
+    ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to load tracks");
-        }
+  if (
+    !tracksResponse.ok ||
+    !albumsResponse.ok ||
+    !artistsResponse.ok
+  ) {
+    throw new Error("Failed to reload music catalog");
+  }
 
-        const data = await response.json();
+  const tracksData = await tracksResponse.json();
+  const albumsData = await albumsResponse.json();
+  const artistsData = await artistsResponse.json();
 
-        setTracks(data);
-        setAlbums(mockAlbums);
-        setArtists(mockArtists);
-        setHasSearched(false);
+  setTracks(tracksData);
+  setAlbums(albumsData);
+  setArtists(artistsData);
+  setHasSearched(false);
       } else {
         const response = await fetch(
           `/api/catalog/search?query=${encodeURIComponent(query)}`
@@ -169,21 +191,27 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
           <section className="catalog-section">
             <h2>Albums</h2>
 
-            {albums.length === 0 ? (
-              <p>No albums found.</p>
-            ) : (
-              <div className="catalog-grid">
-                {albums.map((album) => (
-                  <AlbumCard
-                    key={album.id}
-                    title={album.title}
-                    artist={album.artist}
-                    onSelect={() => onSelectAlbum(album)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+        {!loading && albums.length === 0 && (
+          <p>No albums available.</p>
+        )}
+
+        <div className="catalog-grid">
+          {albums.map((album) => {
+            const artist = artists.find(
+              (artist) => artist.id === album.artistId
+            );
+
+            return (
+              <AlbumCard
+                key={album.id}
+                title={album.title}
+                artist={artist?.name ?? "Unknown Artist"}
+                onSelect={() => onSelectAlbum(album)}
+              />
+            );
+          })}
+        </div>
+      </section>
 
           <section className="catalog-section">
             <h2>Artists</h2>

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Soundwaves.Api.DTOs;
 using Soundwaves.Api.Services;
+using Soundwaves.Api.Models;
 
 namespace Soundwaves.Api.Controllers;
 
@@ -17,7 +18,7 @@ public class AlbumsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAlbums()
+    public async Task<ActionResult<IEnumerable<Album>>> GetAlbums()
     {
         var albums = await _musicCatalogService.GetAlbumsAsync();
 
