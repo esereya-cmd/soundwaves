@@ -51,10 +51,12 @@ public class MusicCatalogService : IMusicCatalogService
     _dbContext = dbContext;
     }
 
-    public IEnumerable<Track> GetTracks()
-    {
-        return _tracks;
-    }
+    public async Task<IEnumerable<Track>> GetTracksAsync()
+{
+    return await _dbContext.Tracks
+        .AsNoTracking()
+        .ToListAsync();
+}
 
     public Track? GetTrackById(ulong id)
     {

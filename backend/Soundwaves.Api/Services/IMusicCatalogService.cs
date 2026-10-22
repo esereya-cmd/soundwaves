@@ -5,7 +5,7 @@ namespace Soundwaves.Api.Services;
 public interface IMusicCatalogService
 {
     // Existing track operations
-    IEnumerable<Track> GetTracks();
+    Task<IEnumerable<Track>> GetTracksAsync();
     Track? GetTrackById(ulong id);
 
     // Existing search operation
