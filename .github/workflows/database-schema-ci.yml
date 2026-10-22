@@ -65,6 +65,7 @@ jobs:
 
       - name: Validate foreign key definitions
         run: |
+          
           set -eu
           db_query() { docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'; }
           for relationship in 'albums:artist_id:artists' 'tracks:album_id:albums' 'tracks:artist_id:artists' 'playlists:user_id:users' 'playlist_tracks:playlist_id:playlists' 'playlist_tracks:track_id:tracks' 'favorites:user_id:users' 'favorites:track_id:tracks' 'playback_history:user_id:users' 'playback_history:track_id:tracks' 'auth_sessions:user_id:users'; do
