@@ -1,161 +1,129 @@
-name: Soundwave Database CI
+name: Soundwave Database Schema Validation
 
 on:
   push:
-    branches:
-      - main
-      - develop
-
-  pull_request:
-    branches:
-      - main
-      - develop
-
+    branches: [main, develop]
     paths:
-      - "backend-database/**"
-      - "backend-database/docker-compose.yml"
-      - ".github/workflows/database-ci.yml"
+      - 'backend-database/**'
+      - '.github/workflows/database-schema-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend-database/**'
+      - '.github/workflows/database-schema-ci.yml'
 
 jobs:
-
   database-validation:
-
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: backend-database
+    env:
+      COMPOSE_PROJECT_NAME: soundwave-schema-ci
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      - name: Start Soundwave database
+      - name: Prepare isolated database configuration
         run: |
-          docker compose up -d database
+          cp .env.example .env
+          # Docker Compose uses a named volume; clean up any previous CI state.
+          docker compose down -v --remove-orphans
 
+      - name: Start MySQL 8.4
+        run: docker compose up -d db
 
-      - name: Wait for database
+      - name: Wait for MySQL health check
         run: |
-          for i in {1..30}; do
-
-            STATUS=$(docker inspect \
-              --format='{{.State.Health.Status}}' \
-              soundwave-db 2>/dev/null || echo "starting")
-
-            echo "Database status: $STATUS"
-
-            if [ "$STATUS" = "healthy" ]; then
-              echo "Database is ready"
-              exit 0
-            fi
-
-            sleep 2
-
+          for i in $(seq 1 40); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' soundwave-mysql 2>/dev/null || echo starting)
+            echo "MySQL health: $status"
+            if [ "$status" = healthy ]; then exit 0; fi
+            if [ "$status" = unhealthy ]; then break; fi
+            sleep 3
           done
-
-          echo "Database failed to become healthy"
-          docker compose logs database
+          docker compose logs db
           exit 1
 
-
-      - name: Show database tables
+      - name: Validate required tables and columns
         run: |
-          docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -e "SHOW TABLES;"
+          set -eu
+          db_query() {
+            docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"' -- "$@"
+          }
+          for table in users artists albums tracks playlists playlist_tracks favorites playback_history auth_sessions; do
+            count=$(printf "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='%s';\n" "$table" | db_query)
+            [ "$count" = 1 ] || { echo "FAIL: missing table $table"; exit 1; }
+            echo "PASS table: $table"
+          done
+          for item in 'artists:name' 'albums:artist_id' 'albums:title' 'tracks:album_id' 'tracks:artist_id' 'tracks:title' 'tracks:duration_ms' 'tracks:file_path'; do
+            table=${item%%:*}; column=${item#*:}
+            count=$(printf "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='%s' AND column_name='%s';\n" "$table" "$column" | db_query)
+            [ "$count" = 1 ] || { echo "FAIL: missing column $table.$column"; exit 1; }
+            echo "PASS column: $table.$column"
+          done
 
-
-      - name: Validate required tables
+      - name: Validate foreign key definitions
         run: |
+          
+          set -eu
+          db_query() { docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'; }
+          for relationship in 'albums:artist_id:artists' 'tracks:album_id:albums' 'tracks:artist_id:artists' 'playlists:user_id:users' 'playlist_tracks:playlist_id:playlists' 'playlist_tracks:track_id:tracks' 'favorites:user_id:users' 'favorites:track_id:tracks' 'playback_history:user_id:users' 'playback_history:track_id:tracks' 'auth_sessions:user_id:users'; do
+            table=${relationship%%:*}; rest=${relationship#*:}; column=${rest%%:*}; parent=${rest#*:}
+            count=$(printf "SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema=DATABASE() AND table_name='%s' AND column_name='%s' AND referenced_table_name='%s';\n" "$table" "$column" "$parent" | db_query)
+            [ "$count" = 1 ] || { echo "FAIL foreign key: $table.$column -> $parent"; exit 1; }
+            echo "PASS foreign key: $table.$column -> $parent"
+          done
 
-          ARTISTS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='artists';
-            ")
-
-          ALBUMS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='albums';
-            ")
-
-          SONGS=$(docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -N \
-            -s \
-            -e "
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema='soundwave'
-              AND table_name='songs';
-            ")
-
-
-          if [ "$ARTISTS" != "1" ]; then
-            echo "ERROR: artists table missing"
+      - name: Load development seed from database/seeds
+        run: |
+          set -eu
+          seed="database/seeds/002_dev_seed.sql"
+          if [ ! -f "$seed" ]; then
+            seed="database/seeds/002_dev_seed_fixed.sql"
+          fi
+          if [ ! -f "$seed" ]; then
+            echo "FAIL: Missing database/seeds/002_dev_seed.sql (or 002_dev_seed_fixed.sql)"
             exit 1
           fi
+          echo "Loading seed data from $seed"
+          docker compose exec -T db sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"' < "$seed"
+          echo "PASS: Seed SQL loaded"
 
-
-          if [ "$ALBUMS" != "1" ]; then
-            echo "ERROR: albums table missing"
-            exit 1
-          fi
-
-
-          if [ "$SONGS" != "1" ]; then
-            echo "ERROR: songs table missing"
-            exit 1
-          fi
-
-
-          echo "All required database tables exist."
-
-
-      - name: Validate seed data
+      - name: Validate catalog seed data and relationships
         run: |
+          set -eu
+          db_query() { docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'; }
+          # Seed data was loaded explicitly from database/seeds in the prior step.
+          # Fail instead of silently accepting an empty or inconsistent catalog.
+          for table in artists albums tracks; do
+            count=$(printf 'SELECT COUNT(*) FROM %s;\n' "$table" | db_query)
+            echo "$table records: $count"
+            [ "$count" -gt 0 ] || { echo "FAIL: $table has no seed records"; exit 1; }
+          done
+          checks=$(cat <<'SQL'
+          SELECT 'orphan_albums', COUNT(*) FROM albums a LEFT JOIN artists ar ON a.artist_id=ar.id WHERE a.artist_id IS NOT NULL AND ar.id IS NULL
+          UNION ALL SELECT 'orphan_track_albums', COUNT(*) FROM tracks t LEFT JOIN albums a ON t.album_id=a.id WHERE t.album_id IS NOT NULL AND a.id IS NULL
+          UNION ALL SELECT 'orphan_track_artists', COUNT(*) FROM tracks t LEFT JOIN artists ar ON t.artist_id=ar.id WHERE t.artist_id IS NOT NULL AND ar.id IS NULL
+          UNION ALL SELECT 'empty_artist_names', COUNT(*) FROM artists WHERE name IS NULL OR TRIM(name)=''
+          UNION ALL SELECT 'empty_album_titles', COUNT(*) FROM albums WHERE title IS NULL OR TRIM(title)=''
+          UNION ALL SELECT 'empty_track_titles', COUNT(*) FROM tracks WHERE title IS NULL OR TRIM(title)=''
+          UNION ALL SELECT 'empty_file_paths', COUNT(*) FROM tracks WHERE file_path IS NULL OR TRIM(file_path)=''
+          UNION ALL SELECT 'invalid_duration', COUNT(*) FROM tracks WHERE duration_ms=0
+          UNION ALL SELECT 'invalid_track_number', COUNT(*) FROM tracks WHERE track_number=0;
+          SQL
+          )
+          printf '%s\n' "$checks" | db_query | while IFS="$(printf '\t')" read -r label count; do
+            echo "$label: $count"
+            [ "$count" = 0 ] || { echo "FAIL: $label"; exit 1; }
+          done
+          echo 'PASS: Sprint 3 catalog and relationship checks'
 
-          docker exec soundwave-db \
-            mysql \
-            -uroot \
-            -prootpassword \
-            soundwave \
-            -e "
-              SELECT COUNT(*) AS artist_count FROM artists;
-              SELECT COUNT(*) AS album_count FROM albums;
-              SELECT COUNT(*) AS song_count FROM songs;
-            "
-
-
-      - name: Show database logs on failure
+      - name: Collect database diagnostics on failure
         if: failure()
-        run: |
-          docker compose logs database
+        run: docker compose logs db
 
-
-      - name: Stop database
+      - name: Remove isolated database and volumes
         if: always()
-        run: |
-          docker compose down -v
+        run: docker compose down -v --remove-orphans

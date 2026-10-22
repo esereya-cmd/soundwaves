@@ -24,7 +24,7 @@ public class ArtistsController : ControllerBase
 
         return Ok(artists);
     }
-
+    
     [HttpGet("{id}")]
     public async Task<ActionResult<ArtistDetailsResponse>> GetArtistById(ulong id)
     {

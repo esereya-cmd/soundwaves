@@ -24,7 +24,7 @@ public class AlbumsController : ControllerBase
 
         return Ok(albums);
     }
-
+    
     [HttpGet("{id}")]
     public async Task<ActionResult<AlbumDetailsResponse>> GetAlbumById(ulong id)
     {

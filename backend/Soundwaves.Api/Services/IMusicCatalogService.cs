@@ -5,11 +5,13 @@ namespace Soundwaves.Api.Services;
 public interface IMusicCatalogService
 {
     // Existing track operations
-    IEnumerable<Track> GetTracks();
+    Task<IEnumerable<Track>> GetTracksAsync();
     Track? GetTrackById(ulong id);
 
     // Existing search operation
     IEnumerable<Track> SearchTracks(string query);
+    // Expanded asynchronous catalog search
+    Task<CatalogSearchResult> SearchCatalogAsync(string query);
 
     // Asynchronous album operations
     Task<IEnumerable<Album>> GetAlbumsAsync();
