@@ -1,0 +1,15 @@
+.music-player {
+  margin: 24px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: #f8f8f8;
+}
+
+.music-player h2 {
+  margin-top: 0;
+}
+
+.music-player p {
+  margin: 8px 0;
+}
