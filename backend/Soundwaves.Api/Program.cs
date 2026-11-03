@@ -25,7 +25,12 @@ else
             ServerVersion.AutoDetect(connectionString)));
 }
 
+// Register backend services.
 builder.Services.AddScoped<IMusicCatalogService, MusicCatalogService>();
+
+// SCRUM-131: Secure audio file lookup service.
+builder.Services.AddScoped<IAudioFileLookupService, AudioFileLookupService>();
+
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
