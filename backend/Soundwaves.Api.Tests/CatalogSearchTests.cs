@@ -167,4 +167,27 @@ public class CatalogSearchTests
         Assert.Single(result.Tracks);
         Assert.Equal("Sunset Road", result.Tracks.Single().Title);
     }
+
+    // SCRUM-142: Verify catalog search handles different capitalization.
+    [Fact]
+    public async Task SearchCatalogAsync_ReturnsMatchingTrack_RegardlessOfCase()
+    {
+        using var db = CreateDbContext();
+
+        db.Tracks.Add(new Track
+        {
+            Id = 1,
+            Title = "Midnight Drive",
+            FilePath = "/midnight.mp3"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new MusicCatalogService(db);
+
+        var result = await service.SearchCatalogAsync("midnight");
+
+        Assert.Single(result.Tracks);
+        Assert.Equal("Midnight Drive", result.Tracks.Single().Title);
+    }
 }
