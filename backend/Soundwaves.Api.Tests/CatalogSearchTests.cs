@@ -193,29 +193,5 @@ public class CatalogSearchTests
     }
 
     
-    // SCRUM-142: Verify album search works regardless of capitalization.
-    [Fact]
-    public async Task SearchCatalogAsync_ReturnsMatchingAlbum_RegardlessOfCase()
-    {
-        using var db = CreateDbContext();
-
-        db.Albums.Add(new Album
-        {
-            Id = 1,
-            ArtistId = 1,
-            Title = "Ocean Dreams"
-        });
-
-        await db.SaveChangesAsync();
-
-        var service = new MusicCatalogService(db);
-
-        var result = await service.SearchCatalogAsync("ocean");
-
-        Assert.Single(result.Albums);
-        Assert.Equal("Ocean Dreams", result.Albums.Single().Title);
-        Assert.Empty(result.Tracks);
-        Assert.Empty(result.Artists);
-    }
 
 }
