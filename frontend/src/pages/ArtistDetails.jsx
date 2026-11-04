@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 
-function ArtistDetails({ artistId, onBack }) {
+function ArtistDetails({ artistId, onBack, onSelectTrack }) {
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,7 +13,11 @@ function ArtistDetails({ artistId, onBack }) {
       setError("");
       setArtist(null);
 
-      if (artistId === null || artistId === undefined || String(artistId) === "0") {
+      if (
+        artistId === null ||
+        artistId === undefined ||
+        String(artistId) === "0"
+      ) {
         setError("Invalid artist ID.");
         setLoading(false);
         return;
@@ -89,7 +92,14 @@ function ArtistDetails({ artistId, onBack }) {
           {Array.isArray(artist.tracks) && artist.tracks.length > 0 ? (
             <ul>
               {artist.tracks.map((track) => (
-                <li key={track.id}>{track.title}</li>
+                <li key={track.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTrack(track)}
+                  >
+                    {track.title}
+                  </button>
+                </li>
               ))}
             </ul>
           ) : (
