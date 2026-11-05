@@ -1,49 +1,46 @@
+
 import { useEffect, useState } from "react";
 
-function ArtistDetails({ artistId, onBack, onSelectTrack }) {
-  const [artist, setArtist] = useState(null);
+function AlbumDetails({ albumId, onBack, onSelectTrack }) {
+  const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
 
-    async function loadArtist() {
+    async function loadAlbum() {
       setLoading(true);
       setError("");
-      setArtist(null);
+      setAlbum(null);
 
-      if (
-        artistId === null ||
-        artistId === undefined ||
-        String(artistId) === "0"
-      ) {
-        setError("Invalid artist ID.");
+      if (albumId === null || albumId === undefined) {
+        setError("No album selected.");
         setLoading(false);
         return;
       }
 
       try {
         const response = await fetch(
-          `/api/artists/${encodeURIComponent(artistId)}`
+          `/api/albums/${encodeURIComponent(albumId)}`
         );
 
         if (response.status === 404) {
-          throw new Error("Artist not found.");
+          throw new Error("Album not found.");
         }
 
         if (!response.ok) {
-          throw new Error("Unable to load artist details.");
+          throw new Error("Unable to load album details.");
         }
 
         const data = await response.json();
 
         if (active) {
-          setArtist(data);
+          setAlbum(data);
         }
       } catch (err) {
         if (active) {
-          setError(err.message || "Unable to load artist details.");
+          setError(err.message || "Unable to load album details.");
         }
       } finally {
         if (active) {
@@ -52,50 +49,44 @@ function ArtistDetails({ artistId, onBack, onSelectTrack }) {
       }
     }
 
-    loadArtist();
+    loadAlbum();
 
     return () => {
       active = false;
     };
-  }, [artistId]);
+  }, [albumId]);
 
   return (
-    <main className="artist-details">
+    <main className="album-details">
       <button type="button" onClick={onBack}>
         Back to Catalog
       </button>
 
-      <h1>Artist Details</h1>
+      <h1>Album Details</h1>
 
-      {loading && <p>Loading artist details...</p>}
+      {loading && <p>Loading album details...</p>}
 
-      {!loading && error && <p role="alert">{error}</p>}
+      {!loading && error && (
+        <p role="alert">{error}</p>
+      )}
 
-      {!loading && !error && artist && (
-        <section className="artist-details-card">
-          <h2>{artist.name}</h2>
+      {!loading && !error && album && (
+        <section className="album-details-card">
+          <h2>{album.title}</h2>
 
-          <h3>Albums</h3>
-
-          {Array.isArray(artist.albums) && artist.albums.length > 0 ? (
-            <ul>
-              {artist.albums.map((album) => (
-                <li key={album.id}>{album.title}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No albums available.</p>
-          )}
+          <p>
+            Artist: {album.artist?.name ?? album.artistName ?? "Unknown"}
+          </p>
 
           <h3>Tracks</h3>
 
-          {Array.isArray(artist.tracks) && artist.tracks.length > 0 ? (
+          {Array.isArray(album.tracks) && album.tracks.length > 0 ? (
             <ul>
-              {artist.tracks.map((track) => (
+              {album.tracks.map((track) => (
                 <li key={track.id}>
                   <button
                     type="button"
-                    onClick={() => onSelectTrack(track)}
+                    onClick={() => onSelectTrack?.(track)}
                   >
                     {track.title}
                   </button>
@@ -111,4 +102,4 @@ function ArtistDetails({ artistId, onBack, onSelectTrack }) {
   );
 }
 
-export default ArtistDetails;
+export default AlbumDetails;
