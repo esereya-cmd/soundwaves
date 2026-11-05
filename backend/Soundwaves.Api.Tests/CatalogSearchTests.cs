@@ -190,6 +190,30 @@ public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
 
         Assert.Single(result.Tracks);
         Assert.Equal("Sunset Road", result.Tracks.Single().Title);
+    } 
+
+    
+    // SCRUM-142: Verify searching part of an album title.
+    [Fact]
+    public async Task SearchCatalogAsync_ReturnsAlbumByPartialTitle()
+    {
+        using var db = CreateDbContext();
+
+        db.Albums.AddRange(
+            new Album { Id = 1, ArtistId = 1, Title = "Ocean Dreams" },
+            new Album { Id = 2, ArtistId = 1, Title = "City Nights" }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new MusicCatalogService(db);
+
+        var result = await service.SearchCatalogAsync("Dreams");
+
+        Assert.Single(result.Albums);
+        Assert.Equal("Ocean Dreams", result.Albums.Single().Title);
+        Assert.Empty(result.Tracks);
+        Assert.Empty(result.Artists);
     }
 
     // SCRUM-142: Verify catalog search handles different capitalization.
