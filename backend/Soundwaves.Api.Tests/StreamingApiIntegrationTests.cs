@@ -127,5 +127,20 @@ public class StreamingApiIntegrationTests : IDisposable
         Assert.Equal(
             Path.Combine(_temporaryDirectory, "valid.mp3"),
             result);
+    }
+    [Theory]
+    [InlineData(9102UL)]
+    [InlineData(9103UL)]
+    public async Task TestFixture_RejectsUnavailableOrUnsafeAudio(ulong trackId)
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var lookupService = scope.ServiceProvider
+            .GetRequiredService<Soundwaves.Api.Services.IAudioFileLookupService>();
+
+        var result = await lookupService.GetAudioFilePathAsync(trackId);
+
+        Assert.Null(result);
     }}
+
 
