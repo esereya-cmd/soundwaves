@@ -47,6 +47,7 @@ public class TracksController : ControllerBase
     }
 
     // SCRUM-132: Stream MP3 audio for an existing track.
+    // SCRUM-133: Enable HTTP byte-range processing for seeking.
     [HttpGet("{id}/stream")]
     public async Task<IActionResult> StreamTrack(ulong id)
     {
@@ -66,6 +67,6 @@ public class TracksController : ControllerBase
         return PhysicalFile(
             audioFilePath,
             "audio/mpeg",
-            enableRangeProcessing: false);
+            enableRangeProcessing: true);
     }
 }

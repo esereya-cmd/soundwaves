@@ -141,6 +141,120 @@ public class StreamingApiIntegrationTests : IDisposable
         var result = await lookupService.GetAudioFilePathAsync(trackId);
 
         Assert.Null(result);
-    }}
+    }
 
+    [Fact]
+    public async Task StreamTrack_ReturnsPartialContent_ForValidRange()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, "/api/tracks/9101/stream");
 
+        request.Headers.Range =
+            new System.Net.Http.Headers.RangeHeaderValue(0, 1023);
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.PartialContent,
+            response.StatusCode);
+
+        Assert.Equal(
+            "audio/mpeg",
+            response.Content.Headers.ContentType?.MediaType);
+
+        Assert.Equal(1024, response.Content.Headers.ContentLength);
+
+        Assert.Equal(
+            0,
+            response.Content.Headers.ContentRange?.From);
+
+        Assert.Equal(
+            1023,
+            response.Content.Headers.ContentRange?.To);
+
+        Assert.Equal(
+            _audioBytes.Length,
+            response.Content.Headers.ContentRange?.Length);
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(_audioBytes.Take(1024).ToArray(), bytes);
+    }
+
+    [Fact]
+    public async Task StreamTrack_ReturnsRangeNotSatisfiable_ForInvalidRange()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, "/api/tracks/9101/stream");
+
+        request.Headers.Range =
+            new System.Net.Http.Headers.RangeHeaderValue(999999, 1000000);
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.RequestedRangeNotSatisfiable,
+            response.StatusCode);
+
+        Assert.Equal(
+            _audioBytes.Length,
+            response.Content.Headers.ContentRange?.Length);
+
+        Assert.Null(response.Content.Headers.ContentRange?.From);
+        Assert.Null(response.Content.Headers.ContentRange?.To);
+    }
+
+    [Fact]
+    public async Task StreamTrack_ReturnsRemainingBytes_ForOpenEndedRange()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, "/api/tracks/9101/stream");
+
+        request.Headers.Range =
+            new System.Net.Http.Headers.RangeHeaderValue(1024, null);
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.PartialContent,
+            response.StatusCode);
+
+        Assert.Equal(
+            _audioBytes.Length - 1024,
+            response.Content.Headers.ContentLength);
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(_audioBytes.Skip(1024).ToArray(), bytes);
+    }
+
+    [Fact]
+    public async Task StreamTrack_ReturnsLastBytes_ForSuffixRange()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, "/api/tracks/9101/stream");
+
+        request.Headers.TryAddWithoutValidation(
+            "Range", "bytes=-500");
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.PartialContent,
+            response.StatusCode);
+
+        Assert.Equal(500, response.Content.Headers.ContentLength);
+
+        Assert.Equal(
+            _audioBytes.Length - 500,
+            response.Content.Headers.ContentRange?.From);
+
+        Assert.Equal(
+            _audioBytes.Length - 1,
+            response.Content.Headers.ContentRange?.To);
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(_audioBytes.TakeLast(500).ToArray(), bytes);
+    }
+}
