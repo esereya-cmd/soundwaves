@@ -127,6 +127,7 @@ public class MusicCatalogService : IMusicCatalogService
                 artist.Name.Contains(query, StringComparison.OrdinalIgnoreCase)));
     }
 
+  
     public async Task<CatalogSearchResult> SearchCatalogAsync(string query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -134,21 +135,21 @@ public class MusicCatalogService : IMusicCatalogService
             return new CatalogSearchResult();
         }
 
-        query = query.Trim();
+        query = query.Trim().ToLowerInvariant();
 
         var tracks = await _dbContext.Tracks
             .AsNoTracking()
-            .Where(track => track.Title.Contains(query))
+            .Where(track => track.Title.ToLower().Contains(query))
             .ToListAsync();
 
         var albums = await _dbContext.Albums
             .AsNoTracking()
-            .Where(album => album.Title.Contains(query))
+            .Where(album => album.Title.ToLower().Contains(query))
             .ToListAsync();
 
         var artists = await _dbContext.Artists
             .AsNoTracking()
-            .Where(artist => artist.Name.Contains(query))
+            .Where(artist => artist.Name.ToLower().Contains(query))
             .ToListAsync();
 
         return new CatalogSearchResult
@@ -158,4 +159,5 @@ public class MusicCatalogService : IMusicCatalogService
             Artists = artists
         };
     }
+
 }
