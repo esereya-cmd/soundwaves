@@ -1,3 +1,4 @@
+
 using Microsoft.AspNetCore.Mvc;
 using Soundwaves.Api.Models;
 using Soundwaves.Api.Services;
@@ -9,36 +10,62 @@ namespace Soundwaves.Api.Controllers;
 public class TracksController : ControllerBase
 {
     private readonly IMusicCatalogService _musicCatalogService;
+    private readonly IAudioFileLookupService _audioFileLookupService;
 
-    public TracksController(IMusicCatalogService musicCatalogService)
+    public TracksController(
+        IMusicCatalogService musicCatalogService,
+        IAudioFileLookupService audioFileLookupService)
     {
         _musicCatalogService = musicCatalogService;
+        _audioFileLookupService = audioFileLookupService;
     }
 
     [HttpGet]
-public async Task<ActionResult<IEnumerable<Track>>> GetTracks()
-{
-    var tracks = await _musicCatalogService.GetTracksAsync();
-
-    return Ok(tracks);
-}
-
-     [HttpGet("{id}")]
-public ActionResult<Track> GetTrackById(ulong id)
-{
-    if (id == 0)
+    public async Task<ActionResult<IEnumerable<Track>>> GetTracks()
     {
-        return BadRequest("Track ID must be greater than 0.");
+        var tracks = await _musicCatalogService.GetTracksAsync();
+
+        return Ok(tracks);
     }
 
-    var track = _musicCatalogService.GetTrackById(id);
-
-    if (track == null)
+    [HttpGet("{id}")]
+    public ActionResult<Track> GetTrackById(ulong id)
     {
-        return NotFound();
+        if (id == 0)
+        {
+            return BadRequest("Track ID must be greater than 0.");
+        }
+
+        var track = _musicCatalogService.GetTrackById(id);
+
+        if (track == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(track);
     }
 
-    return Ok(track);
-}
-}
+    // SCRUM-132: Stream MP3 audio for an existing track.
+    [HttpGet("{id}/stream")]
+    public async Task<IActionResult> StreamTrack(ulong id)
+    {
+        if (id == 0)
+        {
+            return BadRequest("Track ID must be greater than 0.");
+        }
 
+        var audioFilePath =
+            await _audioFileLookupService.GetAudioFilePathAsync(id);
+
+        if (audioFilePath == null)
+        {
+            return NotFound("Audio file not found.");
+        }
+
+        return PhysicalFile(
+            audioFilePath,
+            "audio/mpeg",
+            enableRangeProcessing: false);
+    }
+}

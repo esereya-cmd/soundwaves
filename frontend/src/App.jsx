@@ -19,6 +19,7 @@ function App() {
         <ArtistDetails
           artistId={selectedArtist.id}
           onBack={() => setSelectedArtist(null)}
+          onSelectTrack={setSelectedTrack}
         />
 
         <MusicPlayer selectedTrack={selectedTrack} />
@@ -32,6 +33,7 @@ function App() {
         <AlbumDetails
           albumId={selectedAlbum.id}
           onBack={() => setSelectedAlbum(null)}
+          onSelectTrack={setSelectedTrack}
         />
 
         <MusicPlayer selectedTrack={selectedTrack} />

@@ -1,6 +1,7 @@
+
 import { useEffect, useState } from "react";
 
-function AlbumDetails({ albumId, onBack }) {
+function AlbumDetails({ albumId, onBack, onSelectTrack }) {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,7 +66,9 @@ function AlbumDetails({ albumId, onBack }) {
 
       {loading && <p>Loading album details...</p>}
 
-      {!loading && error && <p role="alert">{error}</p>}
+      {!loading && error && (
+        <p role="alert">{error}</p>
+      )}
 
       {!loading && !error && album && (
         <section className="album-details-card">
@@ -80,7 +83,14 @@ function AlbumDetails({ albumId, onBack }) {
           {Array.isArray(album.tracks) && album.tracks.length > 0 ? (
             <ul>
               {album.tracks.map((track) => (
-                <li key={track.id}>{track.title}</li>
+                <li key={track.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTrack?.(track)}
+                  >
+                    {track.title}
+                  </button>
+                </li>
               ))}
             </ul>
           ) : (

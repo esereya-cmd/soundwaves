@@ -116,18 +116,42 @@ public class CatalogSearchTests
         Assert.Single(result.Artists);
     }
 
-    [Fact]
-    public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
+[Fact]
+public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
+{
+    using var db = CreateDbContext();
+
+    db.Tracks.Add(new Track
     {
-        using var db = CreateDbContext();
-        var service = new MusicCatalogService(db);
+        Id = 1,
+        Title = "Midnight Drive",
+        FilePath = "/midnight.mp3"
+    });
 
-        var result = await service.SearchCatalogAsync("Nonexistent");
+    db.Albums.Add(new Album
+    {
+        Id = 1,
+        ArtistId = 1,
+        Title = "Ocean Dreams"
+    });
 
-        Assert.Empty(result.Tracks);
-        Assert.Empty(result.Albums);
-        Assert.Empty(result.Artists);
-    }
+    db.Artists.Add(new Artist
+    {
+        Id = 1,
+        Name = "Silver Echo"
+    });
+
+    await db.SaveChangesAsync();
+
+    var service = new MusicCatalogService(db);
+
+    var result = await service.SearchCatalogAsync("Nonexistent");
+
+    Assert.Empty(result.Tracks);
+    Assert.Empty(result.Albums);
+    Assert.Empty(result.Artists);
+}
+
 
     [Theory]
     [InlineData("")]
@@ -192,6 +216,26 @@ public class CatalogSearchTests
         Assert.Empty(result.Artists);
     }
 
-    
+    // SCRUM-142: Verify catalog search handles different capitalization.
+    [Fact]
+    public async Task SearchCatalogAsync_ReturnsMatchingTrack_RegardlessOfCase()
+    {
+        using var db = CreateDbContext();
 
+        db.Tracks.Add(new Track
+        {
+            Id = 1,
+            Title = "Midnight Drive",
+            FilePath = "/midnight.mp3"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new MusicCatalogService(db);
+
+        var result = await service.SearchCatalogAsync("midnight");
+
+        Assert.Single(result.Tracks);
+        Assert.Equal("Midnight Drive", result.Tracks.Single().Title);
+    }
 }
