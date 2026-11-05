@@ -1,5 +1,18 @@
+
 import { useEffect, useRef, useState } from "react";
 import "../../styles/musicPlayer.css";
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return "0:00";
+  }
+
+  const totalSeconds = Math.floor(seconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
 
 function PlayerControls({
   selectedTrack,
@@ -9,7 +22,10 @@ function PlayerControls({
   onMuteToggle,
 }) {
   const audioRef = useRef(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -43,6 +59,37 @@ function PlayerControls({
     }
   }
 
+  function handleTimeUpdate() {
+    const audio = audioRef.current;
+
+    if (audio) {
+      setCurrentTime(audio.currentTime);
+    }
+  }
+
+  function handleDurationChange() {
+    const audio = audioRef.current;
+
+    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+      setDuration(audio.duration);
+    } else {
+      setDuration(0);
+    }
+  }
+
+  function handleSeek(event) {
+    const audio = audioRef.current;
+
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return;
+    }
+
+    const newTime = Number(event.target.value);
+
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  }
+
   return (
     <>
       <p>
@@ -55,6 +102,9 @@ function PlayerControls({
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleDurationChange}
+        onDurationChange={handleDurationChange}
         onError={() => {
           setError("Unable to play this track.");
           setIsPlaying(false);
@@ -66,6 +116,38 @@ function PlayerControls({
       </button>
 
       <p>Status: {isPlaying ? "Playing" : "Paused"}</p>
+
+      <div>
+        <label htmlFor="seek">Seek: </label>
+
+        {duration > 0 ? (
+          <input
+            key="seek-ready"
+            id="seek"
+            type="range"
+            min="0"
+            max={duration}
+            step="0.1"
+            value={Math.min(currentTime, duration)}
+            onChange={handleSeek}
+          />
+        ) : (
+          <input
+            key="seek-unavailable"
+            id="seek"
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value="0"
+            disabled
+          />
+        )}
+
+        <p>
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </p>
+      </div>
 
       <div>
         <label htmlFor="volume">Volume: </label>
@@ -126,4 +208,3 @@ function MusicPlayer({ selectedTrack }) {
 }
 
 export default MusicPlayer;
-
