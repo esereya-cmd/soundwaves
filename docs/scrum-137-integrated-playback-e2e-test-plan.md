@@ -11,17 +11,22 @@ Verify that a user can browse the Soundwaves catalog, select a track, stream the
 
 The testing will cover both successful playback and error handling to make sure the application remains functional when something goes wrong.
 
+
 ## 2. Testing Environment
 
 - Frontend: React
 - Backend: ASP.NET Core
-- Database: MySQL
-- Development environment: VS Code and Docker Compose
-- Test device: Windows computer
-- Browser: Chrome or Microsoft Edge (to be confirmed)
-- Branch: Latest integrated `main`
-- Test data: Two approved playable MP3 files linked to database records (to be confirmed)
-- Application startup commands and URLs: To be confirmed
+- Database: MySQL 8.4
+- Development tools: VS Code and Docker Compose
+- Test device: Windows development computer
+- Test browser: Microsoft Edge
+- Source branch: Latest integrated main
+- Frontend entry point: Catalog → Select Song → MusicPlayer
+- Expected backend endpoint: GET /api/tracks/{id}/stream
+- Test data: Two approved MP3 files linked to database track IDs (pending confirmation)
+- Startup instructions: Pending verification with the team
+- Environment status: Not yet verified for full playback
+
 
 ## 3. Current Implementation Findings
 
@@ -73,15 +78,31 @@ For each test, record:
 - Browser screenshots and Network tab results
 - Relevant backend logs and Jira defects
 
+
 ## 7. Team Handoffs
 
-Coordinate with Eduardo and the relevant implementation owners to confirm:
+Integration testing and defect reporting:
+- Derrick: Execute cross-layer playback tests, collect evidence,
+  document defects in Jira, and retest resolved issues.
 
-- When streaming and player functionality will be ready
-- Which two MP3 tracks to use
-- Who handles backend and frontend playback defects
-- How defects will be reported and retested
-- Whether Playwright automation is approved
+Implementation and defect resolution:
+- Frontend player owner: Investigate and fix React playback issues.
+- Backend streaming owner: Investigate and fix API or streaming errors.
+- Database owner: Assist with track records and media references.
+
+Coordination:
+- Eduardo: Confirm feature readiness, implementation ownership,
+  and the agreed testing schedule.
+- Derrick: Communicate test results and blockers to the team.
+
+Handoff process:
+Handoff agreement status: Partially confirmed.
+Gogun has agreed to the proposed workflow.
+Remaining details require confirmation from
+Eduardo, Te Yen, and other relevant owners.
+
+Handoff agreement status: Proposed; awaiting confirmation
+from Eduardo and the relevant feature owners.
 
 ## 8. Current Dependencies
 
