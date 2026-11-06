@@ -60,8 +60,7 @@ public class AudioFileLookupServiceTests
         await dbContext.SaveChangesAsync();
     }
 
-
-        [Fact]
+    [Fact]
     public async Task GetAudioFilePathAsync_RejectsSymbolicLinkOutsideMediaRoot()
     {
         // Arrange
@@ -93,6 +92,7 @@ public class AudioFileLookupServiceTests
         // Assert
         Assert.Null(result);
     }
+
     [Fact]
     public async Task GetAudioFilePathAsync_ReturnsPath_WhenFileExists()
     {
@@ -103,7 +103,10 @@ public class AudioFileLookupServiceTests
         Directory.CreateDirectory(mediaRoot);
 
         var audioPath = Path.Combine(mediaRoot, "test.mp3");
-        await File.WriteAllBytesAsync(audioPath, new byte[] { 1, 2, 3 });
+
+        await File.WriteAllBytesAsync(
+            audioPath,
+            new byte[] { 1, 2, 3 });
 
         await AddTrackAsync(dbContext, 1, "test.mp3");
 
@@ -196,8 +199,13 @@ public class AudioFileLookupServiceTests
         using var dbContext = CreateDbContext();
         using var directory = new TemporaryDirectory();
 
-        var outsidePath = Path.Combine(directory.Path, "outside.mp3");
-        await File.WriteAllBytesAsync(outsidePath, new byte[] { 1, 2, 3 });
+        var outsidePath = Path.Combine(
+            directory.Path,
+            "outside.mp3");
+
+        await File.WriteAllBytesAsync(
+            outsidePath,
+            new byte[] { 1, 2, 3 });
 
         await AddTrackAsync(dbContext, 1, outsidePath);
 
@@ -230,6 +238,61 @@ public class AudioFileLookupServiceTests
         Assert.Null(result);
     }
 
+    // SCRUM-135: Verify valid MP3 lookup in nested directories.
+    [Fact]
+    public async Task GetAudioFilePathAsync_ReturnsPath_ForNestedMp3()
+    {
+        using var dbContext = CreateDbContext();
+        using var directory = new TemporaryDirectory();
+
+        var nestedDirectory = Path.Combine(
+            directory.Path,
+            "media",
+            "albums");
+
+        Directory.CreateDirectory(nestedDirectory);
+
+        var audioPath = Path.Combine(
+            nestedDirectory,
+            "song.mp3");
+
+        await File.WriteAllBytesAsync(
+            audioPath,
+            new byte[] { 1, 2, 3 });
+
+        await AddTrackAsync(
+            dbContext,
+            1,
+            "albums/song.mp3");
+
+        var service = CreateService(dbContext, directory.Path);
+
+        var result = await service.GetAudioFilePathAsync(1);
+
+        Assert.Equal(audioPath, result);
+    }
+
+    // SCRUM-135: Verify missing media configuration is rejected.
+    [Fact]
+    public void AudioFileLookupService_Throws_WhenMediaRootNotConfigured()
+    {
+        using var dbContext = CreateDbContext();
+        using var directory = new TemporaryDirectory();
+
+        var configuration = new ConfigurationBuilder()
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            ContentRootPath = directory.Path
+        };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            new AudioFileLookupService(
+                dbContext,
+                configuration,
+                environment));
+    }
 
     private sealed class TemporaryDirectory : IDisposable
     {
@@ -247,7 +310,9 @@ public class AudioFileLookupServiceTests
         {
             if (Directory.Exists(Path))
             {
-                Directory.Delete(Path, recursive: true);
+                Directory.Delete(
+                    Path,
+                    recursive: true);
             }
         }
     }
@@ -255,11 +320,16 @@ public class AudioFileLookupServiceTests
     private sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = "Soundwaves.Api";
+
         public string EnvironmentName { get; set; } = "Testing";
+
         public string WebRootPath { get; set; } = string.Empty;
+
         public IFileProvider WebRootFileProvider { get; set; } =
             new NullFileProvider();
+
         public string ContentRootPath { get; set; } = string.Empty;
+
         public IFileProvider ContentRootFileProvider { get; set; } =
             new NullFileProvider();
     }
