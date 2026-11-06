@@ -257,4 +257,81 @@ public class StreamingApiIntegrationTests : IDisposable
 
         Assert.Equal(_audioBytes.TakeLast(500).ToArray(), bytes);
     }
+
+        [Fact]
+    public async Task StreamTrack_ReturnsOk_WithFullAudioContent()
+    {
+        using var response =
+            await _client.GetAsync("/api/tracks/9101/stream");
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.OK,
+            response.StatusCode);
+
+        Assert.Equal(
+            "audio/mpeg",
+            response.Content.Headers.ContentType?.MediaType);
+
+        Assert.Equal(
+            _audioBytes.Length,
+            response.Content.Headers.ContentLength);
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(_audioBytes, bytes);
+    }
+
+    [Fact]
+    public async Task StreamTrack_ReturnsBadRequest_ForZeroTrackId()
+    {
+        using var response =
+            await _client.GetAsync("/api/tracks/0/stream");
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(9999)]
+    [InlineData(9102)]
+    [InlineData(9103)]
+    public async Task StreamTrack_ReturnsNotFound_ForUnavailableAudio(
+        ulong trackId)
+    {
+        using var response =
+            await _client.GetAsync($"/api/tracks/{trackId}/stream");
+
+        Assert.Equal(
+            System.Net.HttpStatusCode.NotFound,
+            response.StatusCode);
+    }
+
+   [Theory]
+[InlineData(9102UL)]
+[InlineData(9103UL)]
+public async Task StreamTrack_DoesNotExposeInternalPaths_InErrorResponse(
+    ulong trackId)
+{
+    using var response =
+        await _client.GetAsync($"/api/tracks/{trackId}/stream");
+
+    Assert.Equal(
+        System.Net.HttpStatusCode.NotFound,
+        response.StatusCode);
+
+    var body = await response.Content.ReadAsStringAsync();
+
+    Assert.DoesNotContain(_temporaryDirectory, body,
+        StringComparison.OrdinalIgnoreCase);
+
+    Assert.DoesNotContain("outside.mp3", body,
+        StringComparison.OrdinalIgnoreCase);
+
+    Assert.DoesNotContain("System.IO", body,
+        StringComparison.OrdinalIgnoreCase);
+
+    Assert.DoesNotContain("stack trace", body,
+        StringComparison.OrdinalIgnoreCase);
+} 
 }
