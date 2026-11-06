@@ -120,6 +120,21 @@ jobs:
           done
           echo 'PASS: Sprint 3 catalog and relationship checks'
 
+      
+      - name: SOC 2 CC4.1 Database Security Assessment
+        run: |
+          set -eu
+          echo "Running SOC 2 CC4.1 security assessment"
+          results=$(docker compose exec -T db sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"' \
+            < database/scripts/validate_security_controls.sql)
+          echo "$results"
+          if echo "$results" | grep -Eq '(^|[[:space:]])FAIL([[:space:]]|$)'; then
+            echo "FAIL: SOC 2 CC4.1 security assessment"
+            exit 1
+          fi
+          echo "PASS: SOC 2 CC4.1 security assessment"
+
       - name: Collect database diagnostics on failure
         if: failure()
         run: docker compose logs db
