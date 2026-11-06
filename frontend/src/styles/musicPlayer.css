@@ -5,6 +5,8 @@
   border: 1px solid #ccc;
   border-radius: 10px;
   background-color: #f8f8f8;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 .music-player h2 {
@@ -13,6 +15,18 @@
 
 .music-player p {
   margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.music-player input[type="range"] {
+  width: 180px;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.music-player button {
+  cursor: pointer;
+  margin: 4px;
 }
 
 .player-loading {
@@ -31,5 +45,37 @@
 
 .player-error button {
   margin-top: 6px;
-  cursor: pointer;
 }
+
+/* Tablet */
+@media (max-width: 768px) {
+  .music-player {
+    margin: 16px;
+    padding: 16px;
+  }
+
+  .music-player input[type="range"] {
+    width: 160px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .music-player {
+    margin: 8px;
+    padding: 12px;
+  }
+
+  .music-player h2 {
+    font-size: 22px;
+  }
+
+  .music-player input[type="range"] {
+    width: 140px;
+  }
+
+  .music-player button {
+    padding: 6px 10px;
+  }
+}
+
