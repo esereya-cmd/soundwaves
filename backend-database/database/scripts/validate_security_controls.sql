@@ -76,3 +76,14 @@ SELECT
 FROM auth_sessions s
 LEFT JOIN users u ON s.user_id = u.id
 WHERE u.id IS NULL;
+
+
+
+
+-- SOC 2 CC4.1 CI Negative Test
+-- Temporary simulated failure for GitHub Actions verification.
+-- Remove after testing.
+
+SELECT
+    'Simulated CI security violation' AS control_name,
+    'FAIL' AS result;
