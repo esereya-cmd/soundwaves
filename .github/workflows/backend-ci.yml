@@ -1,31 +1,88 @@
+
 name: Backend CI
 
 on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   backend-build:
+    name: Backend Build, Tests, and Security Audit
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Install .NET 10
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
+      # Step 3: Restore backend and test dependencies
       - name: Restore backend dependencies
-        run: dotnet restore backend/Soundwaves.Api/Soundwaves.Api.csproj
+        run: dotnet restore backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj
 
+      # Step 4: Scan direct and transitive dependencies
+      # for known security vulnerabilities.
+      - name: Audit backend dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+
+          dotnet list backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj package \
+            --vulnerable --include-transitive 2>&1 | tee dependency-audit.txt
+
+          # Fail CI when the audit reports vulnerable packages.
+          if grep -Eq '^[[:space:]]*>[[:space:]]' dependency-audit.txt; then
+            echo "::error::Vulnerable NuGet dependencies detected."
+            exit 1
+          fi
+
+          echo "Dependency vulnerability audit passed."
+
+      # Step 5: Build the ASP.NET Core backend
       - name: Build backend
         run: dotnet build backend/Soundwaves.Api/Soundwaves.Api.csproj --configuration Release --no-restore
 
-      - name: Run backend automated tests
-        run: dotnet test backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj --configuration Release
+      # Step 6: Build the xUnit test project
+      - name: Build backend tests
+        run: dotnet build backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj --configuration Release --no-restore
+
+      # Step 7: Execute backend and streaming tests
+      # Generate TRX evidence for the assessment.
+      - name: Run backend automated and streaming tests
+        run: >
+          dotnet test backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=backend-tests.trx"
+          --results-directory TestResults
+
+      # Step 8: Preserve automated test evidence
+      - name: Upload backend test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults/*.trx
+          if-no-files-found: warn
+
+      # Step 9: Preserve vulnerability scan evidence
+      - name: Upload dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-audit
+          path: dependency-audit.txt
+          if-no-files-found: warn
