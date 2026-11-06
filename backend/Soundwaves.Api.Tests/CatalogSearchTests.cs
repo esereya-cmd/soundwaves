@@ -116,18 +116,42 @@ public class CatalogSearchTests
         Assert.Single(result.Artists);
     }
 
-    [Fact]
-    public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
+[Fact]
+public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
+{
+    using var db = CreateDbContext();
+
+    db.Tracks.Add(new Track
     {
-        using var db = CreateDbContext();
-        var service = new MusicCatalogService(db);
+        Id = 1,
+        Title = "Midnight Drive",
+        FilePath = "/midnight.mp3"
+    });
 
-        var result = await service.SearchCatalogAsync("Nonexistent");
+    db.Albums.Add(new Album
+    {
+        Id = 1,
+        ArtistId = 1,
+        Title = "Ocean Dreams"
+    });
 
-        Assert.Empty(result.Tracks);
-        Assert.Empty(result.Albums);
-        Assert.Empty(result.Artists);
-    }
+    db.Artists.Add(new Artist
+    {
+        Id = 1,
+        Name = "Silver Echo"
+    });
+
+    await db.SaveChangesAsync();
+
+    var service = new MusicCatalogService(db);
+
+    var result = await service.SearchCatalogAsync("Nonexistent");
+
+    Assert.Empty(result.Tracks);
+    Assert.Empty(result.Albums);
+    Assert.Empty(result.Artists);
+}
+
 
     [Theory]
     [InlineData("")]
@@ -166,6 +190,30 @@ public class CatalogSearchTests
 
         Assert.Single(result.Tracks);
         Assert.Equal("Sunset Road", result.Tracks.Single().Title);
+    } 
+
+    
+    // SCRUM-142: Verify searching part of an album title.
+    [Fact]
+    public async Task SearchCatalogAsync_ReturnsAlbumByPartialTitle()
+    {
+        using var db = CreateDbContext();
+
+        db.Albums.AddRange(
+            new Album { Id = 1, ArtistId = 1, Title = "Ocean Dreams" },
+            new Album { Id = 2, ArtistId = 1, Title = "City Nights" }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new MusicCatalogService(db);
+
+        var result = await service.SearchCatalogAsync("Dreams");
+
+        Assert.Single(result.Albums);
+        Assert.Equal("Ocean Dreams", result.Albums.Single().Title);
+        Assert.Empty(result.Tracks);
+        Assert.Empty(result.Artists);
     }
 
     // SCRUM-142: Verify catalog search handles different capitalization.
