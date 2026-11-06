@@ -383,4 +383,65 @@ public class StreamingApiIntegrationTests : IDisposable
     Assert.DoesNotContain("stack trace", body,
         StringComparison.OrdinalIgnoreCase);
 } 
+
+[Theory]
+[InlineData("bytes=0-0", 0, 0, 1)]
+[InlineData("bytes=2047-2047", 2047, 2047, 1)]
+[InlineData("bytes=0-2047", 0, 2047, 2048)]
+public async Task StreamTrack_ReturnsExpectedBytes_ForBoundaryRanges(
+    string range,
+    long expectedStart,
+    long expectedEnd,
+    int expectedLength)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, "/api/tracks/9101/stream");
+
+    request.Headers.TryAddWithoutValidation("Range", range);
+
+    using var response = await _client.SendAsync(request);
+
+    Assert.Equal(
+        System.Net.HttpStatusCode.PartialContent,
+        response.StatusCode);
+
+    Assert.Equal(
+        expectedStart,
+        response.Content.Headers.ContentRange?.From);
+
+    Assert.Equal(
+        expectedEnd,
+        response.Content.Headers.ContentRange?.To);
+
+    Assert.Equal(
+        expectedLength,
+        response.Content.Headers.ContentLength);
+
+    var bytes = await response.Content.ReadAsByteArrayAsync();
+
+    Assert.Equal(
+        _audioBytes.Skip((int)expectedStart).Take(expectedLength).ToArray(),
+        bytes);
+}
+
+[Fact]
+public async Task StreamTrack_Returns416_WhenRangeStartsAtFileSize()
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, "/api/tracks/9101/stream");
+
+    request.Headers.TryAddWithoutValidation(
+        "Range", "bytes=2048-");
+
+    using var response = await _client.SendAsync(request);
+
+    Assert.Equal(
+        System.Net.HttpStatusCode.RequestedRangeNotSatisfiable,
+        response.StatusCode);
+
+    Assert.Equal(
+        (long)_audioBytes.Length,
+        response.Content.Headers.ContentRange?.Length);
+}
+
 }
