@@ -24,6 +24,7 @@ function PlayerControls({
   const audioRef = useRef(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState("");
@@ -44,17 +45,20 @@ function PlayerControls({
       return;
     }
 
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+
     setError("");
+    setIsLoading(true);
 
     try {
-      if (audio.paused) {
-        await audio.play();
-      } else {
-        audio.pause();
-      }
+      await audio.play();
     } catch (err) {
       console.error("Playback error:", err);
-      setError("Unable to play this track.");
+      setError("Unable to play this track. Please try again.");
+      setIsLoading(false);
       setIsPlaying(false);
     }
   }
@@ -70,7 +74,11 @@ function PlayerControls({
   function handleDurationChange() {
     const audio = audioRef.current;
 
-    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+    if (
+      audio &&
+      Number.isFinite(audio.duration) &&
+      audio.duration > 0
+    ) {
       setDuration(audio.duration);
     } else {
       setDuration(0);
@@ -80,7 +88,11 @@ function PlayerControls({
   function handleSeek(event) {
     const audio = audioRef.current;
 
-    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+    if (
+      !audio ||
+      !Number.isFinite(audio.duration) ||
+      audio.duration <= 0
+    ) {
       return;
     }
 
@@ -89,6 +101,36 @@ function PlayerControls({
     audio.currentTime = newTime;
     setCurrentTime(newTime);
   }
+
+  function handleRetry() {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    setError("");
+    setIsLoading(true);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+
+    audio.load();
+  }
+
+  function handleAudioError() {
+    setError("Unable to play this track. Please try again.");
+    setIsLoading(false);
+    setIsPlaying(false);
+  }
+
+  const status = error
+    ? "Error"
+    : isLoading
+      ? "Loading"
+      : isPlaying
+        ? "Playing"
+        : "Paused";
 
   return (
     <>
@@ -99,23 +141,47 @@ function PlayerControls({
       <audio
         ref={audioRef}
         src={`/api/tracks/${encodeURIComponent(selectedTrack.id)}/stream`}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
-        onTimeUpdate={handleTimeUpdate}
+        preload="metadata"
+        onLoadStart={() => {
+          setIsLoading(true);
+          setError("");
+        }}
         onLoadedMetadata={handleDurationChange}
         onDurationChange={handleDurationChange}
-        onError={() => {
-          setError("Unable to play this track.");
-          setIsPlaying(false);
+        onCanPlay={() => {
+          setIsLoading(false);
+          setError("");
         }}
+        onWaiting={() => setIsLoading(true)}
+        onPlay={() => setIsLoading(true)}
+        onPlaying={() => {
+          setIsPlaying(true);
+          setIsLoading(false);
+          setError("");
+        }}
+        onPause={() => {
+          setIsPlaying(false);
+          setIsLoading(false);
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setIsLoading(false);
+        }}
+        onTimeUpdate={handleTimeUpdate}
+        onError={handleAudioError}
       />
 
       <button type="button" onClick={handlePlayPause}>
         {isPlaying ? "Pause" : "Play"}
       </button>
 
-      <p>Status: {isPlaying ? "Playing" : "Paused"}</p>
+      <p>Status: {status}</p>
+
+      {isLoading && !error && (
+        <p className="player-loading" role="status">
+          Loading audio...
+        </p>
+      )}
 
       <div>
         <label htmlFor="seek">Seek: </label>
@@ -167,7 +233,15 @@ function PlayerControls({
         </button>
       </div>
 
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <div className="player-error">
+          <p role="alert">{error}</p>
+
+          <button type="button" onClick={handleRetry}>
+            Retry
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -208,3 +282,4 @@ function MusicPlayer({ selectedTrack }) {
 }
 
 export default MusicPlayer;
+
