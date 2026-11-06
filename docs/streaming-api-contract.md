@@ -1,4 +1,4 @@
-# Soundwaves â€” Streaming API Contract
+# Soundwaves Streaming API Contract
 
 **Jira:** SCRUM-130 â€” Define Streaming API Route and Response Contract
 **Sprint:** 4
