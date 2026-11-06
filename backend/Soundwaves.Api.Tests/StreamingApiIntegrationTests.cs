@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Soundwaves.Api.Data;
 using Soundwaves.Api.Models;
+using System.Net;
 
 namespace Soundwaves.Api.Tests;
 
@@ -256,5 +257,53 @@ public class StreamingApiIntegrationTests : IDisposable
         var bytes = await response.Content.ReadAsByteArrayAsync();
 
         Assert.Equal(_audioBytes.TakeLast(500).ToArray(), bytes);
+    }
+    [Theory]
+    [InlineData(0UL, HttpStatusCode.BadRequest)]
+    [InlineData(9102UL, HttpStatusCode.NotFound)]
+    [InlineData(9103UL, HttpStatusCode.NotFound)]
+    public async Task StreamTrack_HandlesInvalidOrUnsafeTracks(
+        ulong trackId,
+        HttpStatusCode expectedStatus)
+    {
+        using var response = await _client.GetAsync(
+            $"/api/tracks/{trackId}/stream");
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("StackTrace", body);
+        Assert.DoesNotContain("System.Exception", body);
+        Assert.DoesNotContain("C:\\", body);
+        Assert.DoesNotContain("/app/", body);
+        Assert.DoesNotContain(_temporaryDirectory, body);
+    }
+
+    [Theory]
+    [InlineData("bytes=abc-def")]
+    [InlineData("bytes=100-50")]
+    [InlineData("invalid-range")]
+    public async Task StreamTrack_MalformedRange_DoesNotCauseServerError(
+        string rangeHeader)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/tracks/9101/stream");
+
+        request.Headers.TryAddWithoutValidation(
+            "Range", rangeHeader);
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.True(
+            (int)response.StatusCode < 500,
+            $"Unexpected server error for Range: {rangeHeader}");
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("StackTrace", body);
+        Assert.DoesNotContain("System.Exception", body);
+        Assert.DoesNotContain(_temporaryDirectory, body);
     }
 }
