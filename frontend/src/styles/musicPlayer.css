@@ -1,3 +1,4 @@
+
 .music-player {
   margin: 24px;
   padding: 20px;
@@ -12,4 +13,23 @@
 
 .music-player p {
   margin: 8px 0;
+}
+
+.player-loading {
+  color: #805500;
+  font-weight: 600;
+}
+
+.player-error {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #d99;
+  border-radius: 6px;
+  background-color: #fff1f1;
+  color: #9c2020;
+}
+
+.player-error button {
+  margin-top: 6px;
+  cursor: pointer;
 }
