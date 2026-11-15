@@ -1,0 +1,128 @@
+
+/* Playlist list page */
+.playlist-page,
+.playlist-details {
+  min-height: 60vh;
+  padding: 40px;
+  background-color: #0f172a;
+  color: #ffffff;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* Page headings */
+.playlist-page h1,
+.playlist-details h1 {
+  color: #ffffff;
+  margin: 20px 0 30px;
+  font-size: 42px;
+}
+
+.playlist-page h2,
+.playlist-details h2 {
+  color: #ffffff;
+  margin: 10px 0 20px;
+  font-size: 26px;
+}
+
+/* Messages */
+.playlist-page p,
+.playlist-details p {
+  color: #cbd5e1;
+  font-size: 16px;
+}
+
+/* Playlist cards */
+.playlist-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 800px;
+  margin: 30px auto;
+}
+
+.playlist-card {
+  background-color: #1e293b;
+  padding: 30px;
+  border-radius: 12px;
+}
+
+/* Playlist buttons */
+.playlist-page button,
+.playlist-details button {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.playlist-page button:hover,
+.playlist-details button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Playlist track list */
+.playlist-tracks {
+  list-style: none;
+  padding: 0;
+  margin: 20px auto;
+}
+
+.playlist-tracks li {
+  margin: 12px 0;
+}
+
+/* Navigation buttons in App.jsx */
+.playlist-open-button,
+.playlist-back-button {
+  display: block;
+  width: fit-content;
+  margin: 20px 0 20px 40px;
+  padding: 12px 20px;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.playlist-open-button:hover,
+.playlist-back-button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Keyboard accessibility */
+.playlist-page button:focus-visible,
+.playlist-details button:focus-visible,
+.playlist-open-button:focus-visible,
+.playlist-back-button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+  .playlist-page,
+  .playlist-details {
+    padding: 24px 16px;
+  }
+
+  .playlist-page h1,
+  .playlist-details h1 {
+    font-size: 32px;
+  }
+
+  .playlist-open-button,
+  .playlist-back-button {
+    margin-left: 16px;
+  }
+
+  .playlist-card {
+    padding: 20px;
+  }
+}
+
