@@ -68,7 +68,10 @@ describe("PlaylistDetails", () => {
   });
 
   it("calls onSelectTrack when a track is clicked", () => {
-    const track = { id: 1, title: "Sample Track" };
+    const track = {
+      id: 1,
+      title: "Sample Track",
+    };
 
     const playlist = {
       id: 1,
@@ -90,5 +93,31 @@ describe("PlaylistDetails", () => {
     );
 
     expect(mockOnSelectTrack).toHaveBeenCalledWith(track);
+  });
+
+  it("displays a loading message", () => {
+    render(<PlaylistDetails isLoading={true} />);
+
+    expect(
+      screen.getByText("Loading playlist...")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("status")
+    ).toBeInTheDocument();
+  });
+
+  it("displays an error message", () => {
+    render(
+      <PlaylistDetails error="Unable to load playlist." />
+    );
+
+    expect(
+      screen.getByText("Unable to load playlist.")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("alert")
+    ).toBeInTheDocument();
   });
 });

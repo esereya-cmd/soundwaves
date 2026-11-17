@@ -1,10 +1,19 @@
 
-function PlaylistList({ playlists = [], onSelectPlaylist }) {
+function PlaylistList({
+  playlists = [],
+  onSelectPlaylist,
+  isLoading = false,
+  error = "",
+}) {
   return (
     <main className="playlist-page">
       <h1>My Playlists</h1>
 
-      {playlists.length === 0 ? (
+      {isLoading ? (
+        <p role="status">Loading playlists...</p>
+      ) : error ? (
+        <p role="alert">{error}</p>
+      ) : playlists.length === 0 ? (
         <p>No playlists yet.</p>
       ) : (
         <section className="playlist-grid">
@@ -27,4 +36,5 @@ function PlaylistList({ playlists = [], onSelectPlaylist }) {
 }
 
 export default PlaylistList;
+
 

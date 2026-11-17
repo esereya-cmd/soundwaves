@@ -1,5 +1,37 @@
 
-function PlaylistDetails({ playlist, onBack, onSelectTrack }) {
+function PlaylistDetails({
+  playlist,
+  onBack,
+  onSelectTrack,
+  isLoading = false,
+  error = "",
+}) {
+  if (isLoading) {
+    return (
+      <main className="playlist-details">
+        <button type="button" onClick={onBack}>
+          Back to Playlists
+        </button>
+
+        <h1>Playlist Details</h1>
+        <p role="status">Loading playlist...</p>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="playlist-details">
+        <button type="button" onClick={onBack}>
+          Back to Playlists
+        </button>
+
+        <h1>Playlist Details</h1>
+        <p role="alert">{error}</p>
+      </main>
+    );
+  }
+
   if (!playlist) {
     return (
       <main className="playlist-details">
