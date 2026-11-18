@@ -1,5 +1,13 @@
 
-function PlaylistDetails({ playlist, onBack, onSelectTrack }) {
+import PlaylistControls from "../components/PlaylistControls";
+
+function PlaylistDetails({
+  playlist,
+  onBack,
+  onSelectTrack,
+  onRenamePlaylist,
+  onDeletePlaylist,
+}) {
   if (!playlist) {
     return (
       <main className="playlist-details">
@@ -42,8 +50,15 @@ function PlaylistDetails({ playlist, onBack, onSelectTrack }) {
           ))}
         </ul>
       )}
+
+      <PlaylistControls
+        playlist={playlist}
+        onRename={onRenamePlaylist}
+        onDelete={onDeletePlaylist}
+      />
     </main>
   );
 }
 
 export default PlaylistDetails;
+
