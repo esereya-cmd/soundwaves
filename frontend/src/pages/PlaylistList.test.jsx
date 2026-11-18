@@ -53,4 +53,27 @@ describe("PlaylistList", () => {
 
     expect(mockOnSelectPlaylist).toHaveBeenCalledWith(playlists[0]);
   });
+
+  it("displays a loading message", () => {
+    render(<PlaylistList isLoading={true} />);
+
+    expect(
+      screen.getByText("Loading playlists...")
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("displays an error message", () => {
+    render(
+      <PlaylistList error="Unable to load playlists." />
+    );
+
+    expect(
+      screen.getByText("Unable to load playlists.")
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
 });
+
