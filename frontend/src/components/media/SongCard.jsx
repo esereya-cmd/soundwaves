@@ -1,4 +1,10 @@
-function SongCard({ title, artistId, albumId, onSelect }) {
+function SongCard({
+  title,
+  artistId,
+  albumId,
+  onSelect,
+  onAddToPlaylist,
+}) {
   return (
     <article className="catalog-card">
       <h3>{title}</h3>
@@ -9,6 +15,12 @@ function SongCard({ title, artistId, albumId, onSelect }) {
       <button type="button" onClick={onSelect}>
         View Details
       </button>
+
+      {onAddToPlaylist && (
+        <button type="button" onClick={onAddToPlaylist}>
+          Add to Playlist
+        </button>
+      )}
     </article>
   );
 }
