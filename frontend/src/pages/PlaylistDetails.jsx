@@ -1,10 +1,15 @@
 
+import PlaylistControls from "../components/PlaylistControls";
+
 function PlaylistDetails({
   playlist,
   onBack,
   onSelectTrack,
+
   isLoading = false,
   error = "",
+  onRenamePlaylist,
+  onDeletePlaylist,
 }) {
   if (isLoading) {
     return (
@@ -74,8 +79,15 @@ function PlaylistDetails({
           ))}
         </ul>
       )}
+
+      <PlaylistControls
+        playlist={playlist}
+        onRename={onRenamePlaylist}
+        onDelete={onDeletePlaylist}
+      />
     </main>
   );
 }
 
 export default PlaylistDetails;
+
