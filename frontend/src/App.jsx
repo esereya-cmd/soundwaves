@@ -7,6 +7,7 @@ import AlbumDetails from "./pages/AlbumDetails";
 import ArtistDetails from "./pages/ArtistDetails";
 import PlaylistList from "./pages/PlaylistList";
 import PlaylistDetails from "./pages/PlaylistDetails";
+import CreatePlaylistForm from "./components/CreatePlaylistForm";
 import MusicPlayer from "./components/media/MusicPlayer";
 
 import "./styles/playlist.css";
@@ -39,6 +40,11 @@ function App() {
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
+  // Playlist creation requires a confirmed backend API.
+  async function handleCreatePlaylist() {
+    throw new Error("Playlist creation API is not available yet.");
+  }
+
   if (showPlaylists) {
     return (
       <>
@@ -57,6 +63,10 @@ function App() {
             >
               Back to Catalog
             </button>
+
+            <CreatePlaylistForm
+              onCreatePlaylist={handleCreatePlaylist}
+            />
 
             <PlaylistList
               playlists={samplePlaylists}
@@ -136,3 +146,4 @@ function App() {
 }
 
 export default App;
+
