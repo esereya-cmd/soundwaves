@@ -4,10 +4,17 @@ import { useEffect, useState } from "react";
 import SongCard from "../components/media/SongCard";
 import AlbumCard from "../components/media/AlbumCard";
 import ArtistCard from "../components/media/ArtistCard";
+import AddToPlaylist from "../components/AddToPlaylist";
 
 import "../styles/catalog.css";
 
-function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
+function Catalog({
+  onSelectSong,
+  onSelectAlbum,
+  onSelectArtist,
+  playlists = [],
+  onAddTrack,
+}) {
   const [tracks, setTracks] = useState([]);
   const [albums, setAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -18,6 +25,8 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedTrackToAdd, setSelectedTrackToAdd] = useState(null);
+
   useEffect(() => {
     let active = true;
 
@@ -27,7 +36,7 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
           await Promise.all([
             fetch("/api/tracks"),
             fetch("/api/albums"),
-            fetch("/api/artists")
+            fetch("/api/artists"),
           ]);
 
         if (
@@ -84,28 +93,28 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
     try {
       if (query === "") {
         const [tracksResponse, albumsResponse, artistsResponse] =
-    await Promise.all([
-      fetch("/api/tracks"),
-      fetch("/api/albums"),
-      fetch("/api/artists")
-    ]);
+          await Promise.all([
+            fetch("/api/tracks"),
+            fetch("/api/albums"),
+            fetch("/api/artists"),
+          ]);
 
-  if (
-    !tracksResponse.ok ||
-    !albumsResponse.ok ||
-    !artistsResponse.ok
-  ) {
-    throw new Error("Failed to reload music catalog");
-  }
+        if (
+          !tracksResponse.ok ||
+          !albumsResponse.ok ||
+          !artistsResponse.ok
+        ) {
+          throw new Error("Failed to reload music catalog");
+        }
 
-  const tracksData = await tracksResponse.json();
-  const albumsData = await albumsResponse.json();
-  const artistsData = await artistsResponse.json();
+        const tracksData = await tracksResponse.json();
+        const albumsData = await albumsResponse.json();
+        const artistsData = await artistsResponse.json();
 
-  setTracks(tracksData);
-  setAlbums(albumsData);
-  setArtists(artistsData);
-  setHasSearched(false);
+        setTracks(tracksData);
+        setAlbums(albumsData);
+        setArtists(artistsData);
+        setHasSearched(false);
       } else {
         const response = await fetch(
           `/api/catalog/search?query=${encodeURIComponent(query)}`
@@ -182,36 +191,50 @@ function Catalog({ onSelectSong, onSelectAlbum, onSelectArtist }) {
                     artistId={track.artistId}
                     albumId={track.albumId}
                     onSelect={() => onSelectSong(track)}
+                    onAddToPlaylist={
+                      playlists.length > 0
+                        ? () => setSelectedTrackToAdd(track)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
             )}
           </section>
 
+          {selectedTrackToAdd && (
+            <AddToPlaylist
+              track={selectedTrackToAdd}
+              playlists={playlists}
+              onAddTrack={onAddTrack}
+              onCancel={() => setSelectedTrackToAdd(null)}
+            />
+          )}
+
           <section className="catalog-section">
             <h2>Albums</h2>
 
-        {!loading && albums.length === 0 && (
-          <p>No albums available.</p>
-        )}
+            {albums.length === 0 ? (
+              <p>No albums available.</p>
+            ) : (
+              <div className="catalog-grid">
+                {albums.map((album) => {
+                  const artist = artists.find(
+                    (artist) => artist.id === album.artistId
+                  );
 
-        <div className="catalog-grid">
-          {albums.map((album) => {
-            const artist = artists.find(
-              (artist) => artist.id === album.artistId
-            );
-
-            return (
-              <AlbumCard
-                key={album.id}
-                title={album.title}
-                artist={artist?.name ?? "Unknown Artist"}
-                onSelect={() => onSelectAlbum(album)}
-              />
-            );
-          })}
-        </div>
-      </section>
+                  return (
+                    <AlbumCard
+                      key={album.id}
+                      title={album.title}
+                      artist={artist?.name ?? "Unknown Artist"}
+                      onSelect={() => onSelectAlbum(album)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           <section className="catalog-section">
             <h2>Artists</h2>

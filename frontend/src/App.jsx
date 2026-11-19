@@ -40,9 +40,14 @@ function App() {
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
-  // Playlist creation requires a confirmed backend API.
+  // SCRUM-168: Playlist creation requires a confirmed backend API.
   async function handleCreatePlaylist() {
     throw new Error("Playlist creation API is not available yet.");
+  }
+
+  // SCRUM-170: Adding tracks requires a confirmed backend API.
+  async function handleAddTrack() {
+    throw new Error("Add-to-playlist API is not available yet.");
   }
 
   if (showPlaylists) {
@@ -138,6 +143,8 @@ function App() {
         }}
         onSelectAlbum={setSelectedAlbum}
         onSelectArtist={setSelectedArtist}
+        playlists={samplePlaylists}
+        onAddTrack={handleAddTrack}
       />
 
       <MusicPlayer selectedTrack={selectedTrack} />
@@ -146,4 +153,5 @@ function App() {
 }
 
 export default App;
+
 
