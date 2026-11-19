@@ -12,7 +12,8 @@ import MusicPlayer from "./components/media/MusicPlayer";
 
 import "./styles/playlist.css";
 
-// Temporary playlist data until the backend API is ready.
+// Temporary playlist data until the frontend is connected
+// to the backend Playlist API.
 const samplePlaylists = [
   {
     id: 1,
@@ -40,16 +41,25 @@ function App() {
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
-  // SCRUM-168: Playlist creation requires a confirmed backend API.
+  // SCRUM-168: Create Playlist
+  // Backend integration is still pending.
   async function handleCreatePlaylist() {
-    throw new Error("Playlist creation API is not available yet.");
+    throw new Error("Playlist creation API is not connected yet.");
   }
 
-  // SCRUM-170: Adding tracks requires a confirmed backend API.
+  // SCRUM-170: Add Track to Playlist
+  // Backend integration is still pending.
   async function handleAddTrack() {
-    throw new Error("Add-to-playlist API is not available yet.");
+    throw new Error("Add-to-playlist API is not connected yet.");
   }
 
+  // SCRUM-171: Remove Track from Playlist
+  // The UI is ready, but backend integration must be verified.
+  async function handleRemoveTrack() {
+    throw new Error("Remove-track backend integration is pending.");
+  }
+
+  // Playlist pages
   if (showPlaylists) {
     return (
       <>
@@ -58,6 +68,7 @@ function App() {
             playlist={selectedPlaylist}
             onBack={() => setSelectedPlaylist(null)}
             onSelectTrack={setSelectedTrack}
+            onRemoveTrack={handleRemoveTrack}
           />
         ) : (
           <>
@@ -85,6 +96,7 @@ function App() {
     );
   }
 
+  // Artist details
   if (selectedArtist) {
     return (
       <>
@@ -99,6 +111,7 @@ function App() {
     );
   }
 
+  // Album details
   if (selectedAlbum) {
     return (
       <>
@@ -113,6 +126,7 @@ function App() {
     );
   }
 
+  // Song details
   if (selectedSong) {
     return (
       <>
@@ -126,6 +140,7 @@ function App() {
     );
   }
 
+  // Main music catalog
   return (
     <>
       <button
@@ -153,5 +168,3 @@ function App() {
 }
 
 export default App;
-
-
