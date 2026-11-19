@@ -230,4 +230,47 @@ public class PlaylistService : IPlaylistService
         };
     }
 
+    // Delete a playlist belonging to the specified user.
+    public async Task<bool> DeletePlaylistAsync(
+        ulong userId,
+        ulong playlistId)
+    {
+        // Validate the user ID.
+        if (userId == 0)
+        {
+            throw new ArgumentException(
+                "A valid user ID is required.",
+                nameof(userId));
+        }
+
+        // Validate the playlist ID.
+        if (playlistId == 0)
+        {
+            throw new ArgumentException(
+                "A valid playlist ID is required.",
+                nameof(playlistId));
+        }
+
+        // Find the playlist and verify ownership.
+        var playlist = await _dbContext.Playlists
+            .FirstOrDefaultAsync(p =>
+                p.Id == playlistId &&
+                p.UserId == userId);
+
+        // Do not reveal whether another user's playlist exists.
+        if (playlist == null)
+        {
+            return false;
+        }
+
+        // Delete the playlist.
+        _dbContext.Playlists.Remove(playlist);
+
+        // Save the deletion to the database.
+        await _dbContext.SaveChangesAsync();
+
+        return true;
+    }
+
+
 }
