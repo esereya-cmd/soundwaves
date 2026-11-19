@@ -10,7 +10,18 @@ public interface IPlaylistService
         ulong userId,
         CreatePlaylistRequest request);
 
-    // Retrieve playlists belonging to the specified user.
+    // Retrieve all playlists belonging to the specified user.
     Task<IEnumerable<PlaylistResponse>> GetPlaylistsAsync(
         ulong userId);
+
+    // Retrieve a specific playlist and its ordered tracks.
+    Task<PlaylistDetailsResponse?> GetPlaylistByIdAsync(
+        ulong userId,
+        ulong playlistId);
+
+    // Update a playlist's name and description.
+    Task<PlaylistResponse?> UpdatePlaylistAsync(
+        ulong userId,
+        ulong playlistId,
+        UpdatePlaylistRequest request);
 }

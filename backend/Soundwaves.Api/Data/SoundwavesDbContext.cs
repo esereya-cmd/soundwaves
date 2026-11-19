@@ -15,6 +15,7 @@ public class SoundwavesDbContext : DbContext
     public DbSet<Album> Albums => Set<Album>();
     public DbSet<Track> Tracks => Set<Track>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
+    public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,5 +112,48 @@ public class SoundwavesDbContext : DbContext
         modelBuilder.Entity<Playlist>()
             .HasIndex(p => p.UserId)
             .HasDatabaseName("idx_playlists_user_id");
+
+
+        // Playlist-track relationship mapping
+        modelBuilder.Entity<PlaylistTrack>()
+            .ToTable("playlist_tracks");
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .HasKey(pt => new
+            {
+                pt.PlaylistId,
+                pt.TrackId,
+                pt.Position
+            });
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .Property(pt => pt.PlaylistId)
+            .HasColumnName("playlist_id");
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .Property(pt => pt.TrackId)
+            .HasColumnName("track_id");
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .Property(pt => pt.Position)
+            .HasColumnName("position");
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .Property(pt => pt.AddedAt)
+            .HasColumnName("added_at")
+            .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .HasOne<Playlist>()
+            .WithMany()
+            .HasForeignKey(pt => pt.PlaylistId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PlaylistTrack>()
+            .HasOne<Track>()
+            .WithMany()
+            .HasForeignKey(pt => pt.TrackId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

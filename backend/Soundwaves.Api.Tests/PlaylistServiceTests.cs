@@ -222,4 +222,364 @@ public class PlaylistServiceTests
             new ulong[] { 1, 2, 3 },
             results.Select(p => p.Id));
     }
+
+    [Fact]
+    public async Task GetPlaylistByIdAsync_ReturnsPlaylist_WhenOwnedByUser()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "My Favorites",
+            Description = "Favorite songs"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.GetPlaylistByIdAsync(1001, 1);
+
+        Assert.NotNull(result);
+        Assert.Equal((ulong)1, result.Id);
+        Assert.Equal("My Favorites", result.Name);
+        Assert.Equal("Favorite songs", result.Description);
+        Assert.Empty(result.Tracks);
+    }
+
+    [Fact]
+    public async Task GetPlaylistByIdAsync_ReturnsNull_WhenPlaylistDoesNotExist()
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.GetPlaylistByIdAsync(1001, 999);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetPlaylistByIdAsync_ReturnsNull_WhenOwnedByAnotherUser()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.GetPlaylistByIdAsync(1001, 2);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetPlaylistByIdAsync_ReturnsTracksInPositionOrder()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Ordered Playlist"
+        });
+
+        dbContext.Tracks.AddRange(
+            new Track
+            {
+                Id = 10,
+                Title = "First Song",
+                FilePath = "/first.mp3"
+            },
+            new Track
+            {
+                Id = 20,
+                Title = "Second Song",
+                FilePath = "/second.mp3"
+            }
+        );
+
+        dbContext.PlaylistTracks.AddRange(
+            new PlaylistTrack
+            {
+                PlaylistId = 1,
+                TrackId = 20,
+                Position = 2
+            },
+            new PlaylistTrack
+            {
+                PlaylistId = 1,
+                TrackId = 10,
+                Position = 1
+            }
+        );
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.GetPlaylistByIdAsync(1001, 1);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Tracks.Count);
+        Assert.Equal((ulong)10, result.Tracks[0].Id);
+        Assert.Equal((uint)1, result.Tracks[0].Position);
+        Assert.Equal((ulong)20, result.Tracks[1].Id);
+        Assert.Equal((uint)2, result.Tracks[1].Position);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1001, 0)]
+    public async Task GetPlaylistByIdAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId)
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.GetPlaylistByIdAsync(userId, playlistId));
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_UpdatesPlaylist_WhenOwnedByUser()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original Playlist",
+            Description = "Original description"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "Updated Playlist",
+            Description = "Updated description"
+        };
+
+        var result = await service.UpdatePlaylistAsync(
+            1001, 1, request);
+
+        Assert.NotNull(result);
+        Assert.Equal("Updated Playlist", result.Name);
+        Assert.Equal("Updated description", result.Description);
+
+        var saved = await dbContext.Playlists.SingleAsync();
+
+        Assert.Equal((ulong)1001, saved.UserId);
+        Assert.Equal("Updated Playlist", saved.Name);
+        Assert.Equal("Updated description", saved.Description);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_TrimsPlaylistName()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "  Updated Favorites  ",
+            Description = null
+        };
+
+        var result = await service.UpdatePlaylistAsync(
+            1001, 1, request);
+
+        Assert.NotNull(result);
+        Assert.Equal("Updated Favorites", result.Name);
+        Assert.Null(result.Description);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UpdatePlaylistAsync_RejectsEmptyNames(
+        string name)
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = name,
+            Description = "Test"
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdatePlaylistAsync(1001, 1, request));
+
+        var saved = await dbContext.Playlists.SingleAsync();
+
+        Assert.Equal("Original", saved.Name);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_RejectsLongName()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = new string('A', 256)
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdatePlaylistAsync(1001, 1, request));
+
+        Assert.Equal(
+            "Original",
+            (await dbContext.Playlists.SingleAsync()).Name);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_RejectsLongDescription()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "Updated",
+            Description = new string('A', 1001)
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdatePlaylistAsync(1001, 1, request));
+
+        Assert.Equal(
+            "Original",
+            (await dbContext.Playlists.SingleAsync()).Name);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_ReturnsNull_WhenPlaylistDoesNotExist()
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "Updated",
+            Description = "Test"
+        };
+
+        var result = await service.UpdatePlaylistAsync(
+            1001, 999, request);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_ReturnsNull_WhenOwnedByAnotherUser()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist",
+            Description = "Private description"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "Unauthorized Update",
+            Description = "Should not change"
+        };
+
+        var result = await service.UpdatePlaylistAsync(
+            1001, 2, request);
+
+        Assert.Null(result);
+
+        var saved = await dbContext.Playlists.SingleAsync();
+
+        Assert.Equal("Private Playlist", saved.Name);
+        Assert.Equal("Private description", saved.Description);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1001, 0)]
+    public async Task UpdatePlaylistAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId)
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = "Updated"
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdatePlaylistAsync(
+                userId, playlistId, request));
+    }
+
 }

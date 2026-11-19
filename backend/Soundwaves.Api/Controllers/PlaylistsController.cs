@@ -89,4 +89,124 @@ public class PlaylistsController : ControllerBase
 
         return Ok(playlists);
     }
+
+    // GET /api/playlists/{id}
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPlaylistById(ulong id)
+    {
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        // Require a valid server-side identity.
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        // Reject invalid playlist identifiers.
+        if (id == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist ID must be greater than zero."
+            });
+        }
+
+        // Retrieve the playlist only if it belongs to the user.
+        var playlist = await _playlistService.GetPlaylistByIdAsync(
+            userId.Value,
+            id);
+
+        if (playlist == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Not Found",
+                Detail = "Playlist not found."
+            });
+        }
+
+        return Ok(playlist);
+    }
+
+
+    // PUT /api/playlists/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdatePlaylist(
+        ulong id,
+        [FromBody] UpdatePlaylistRequest request)
+    {
+        // Require a valid server-side identity.
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        // Reject invalid playlist identifiers.
+        if (id == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist ID must be greater than zero."
+            });
+        }
+
+        // Reject empty or whitespace-only playlist names.
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist name cannot be empty."
+            });
+        }
+
+        try
+        {
+            // Update only a playlist owned by the current user.
+            var playlist = await _playlistService.UpdatePlaylistAsync(
+                userId.Value,
+                id,
+                request);
+
+            if (playlist == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not Found",
+                    Detail = "Playlist not found."
+                });
+            }
+
+            return Ok(playlist);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = ex.Message
+            });
+        }
+    }
 }
+
