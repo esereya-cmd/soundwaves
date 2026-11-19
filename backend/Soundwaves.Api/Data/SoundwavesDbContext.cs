@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Soundwaves.Api.Models;
 
@@ -13,12 +14,14 @@ public class SoundwavesDbContext : DbContext
     public DbSet<Artist> Artists => Set<Artist>();
     public DbSet<Album> Albums => Set<Album>();
     public DbSet<Track> Tracks => Set<Track>();
+    public DbSet<Playlist> Playlists => Set<Playlist>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Artist>().ToTable("artists");
         modelBuilder.Entity<Album>().ToTable("albums");
         modelBuilder.Entity<Track>().ToTable("tracks");
+        modelBuilder.Entity<Playlist>().ToTable("playlists");
 
         modelBuilder.Entity<Artist>()
             .Property(a => a.CreatedAt)
@@ -71,5 +74,42 @@ public class SoundwavesDbContext : DbContext
         modelBuilder.Entity<Track>()
             .Property(t => t.CreatedAt)
             .HasColumnName("created_at");
+
+        // Playlist mapping
+        modelBuilder.Entity<Playlist>()
+            .HasKey(p => p.Id);
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.Id)
+            .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.UserId)
+            .HasColumnName("user_id");
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.Name)
+            .HasColumnName("name")
+            .HasMaxLength(255)
+            .IsRequired();
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.Description)
+            .HasColumnName("description")
+            .HasMaxLength(1000);
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.CreatedAt)
+            .HasColumnName("created_at")
+            .ValueGeneratedOnAdd();
+
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.UpdatedAt)
+            .HasColumnName("updated_at")
+            .ValueGeneratedOnAddOrUpdate();
+
+        modelBuilder.Entity<Playlist>()
+            .HasIndex(p => p.UserId)
+            .HasDatabaseName("idx_playlists_user_id");
     }
 }
