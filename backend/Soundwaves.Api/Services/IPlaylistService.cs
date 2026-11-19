@@ -24,4 +24,10 @@ public interface IPlaylistService
         ulong userId,
         ulong playlistId,
         UpdatePlaylistRequest request);
+
+    // Delete a playlist belonging to the specified user.
+    // Returns false if the playlist does not exist or is not owned.
+    Task<bool> DeletePlaylistAsync(
+        ulong userId,
+        ulong playlistId);
 }

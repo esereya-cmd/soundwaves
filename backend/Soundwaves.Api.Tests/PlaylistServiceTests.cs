@@ -582,4 +582,154 @@ public class PlaylistServiceTests
                 userId, playlistId, request));
     }
 
+    [Fact]
+    public async Task DeletePlaylistAsync_DeletesOwnedPlaylist()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Delete Me"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.DeletePlaylistAsync(1001, 1);
+
+        Assert.True(result);
+        Assert.Empty(await dbContext.Playlists.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeletePlaylistAsync_ReturnsFalse_WhenPlaylistDoesNotExist()
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.DeletePlaylistAsync(1001, 999);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DeletePlaylistAsync_ReturnsFalse_WhenOwnedByAnotherUser()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist"
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.DeletePlaylistAsync(1001, 2);
+
+        Assert.False(result);
+
+        var saved = await dbContext.Playlists.SingleAsync();
+
+        Assert.Equal((ulong)2002, saved.UserId);
+        Assert.Equal("Private Playlist", saved.Name);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1001, 0)]
+    public async Task DeletePlaylistAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId)
+    {
+        using var dbContext = CreateDbContext();
+        var service = new PlaylistService(dbContext);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.DeletePlaylistAsync(userId, playlistId));
+    }
+
+    [Fact]
+    public async Task DeletePlaylistAsync_PreservesOtherPlaylists()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.AddRange(
+            new Playlist
+            {
+                Id = 1,
+                UserId = 1001,
+                Name = "Delete Me"
+            },
+            new Playlist
+            {
+                Id = 2,
+                UserId = 1001,
+                Name = "Keep Me"
+            }
+        );
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.DeletePlaylistAsync(1001, 1);
+
+        Assert.True(result);
+
+        var remaining = await dbContext.Playlists.ToListAsync();
+
+        Assert.Single(remaining);
+        Assert.Equal((ulong)2, remaining[0].Id);
+        Assert.Equal("Keep Me", remaining[0].Name);
+    }
+
+    [Fact]
+    public async Task DeletePlaylistAsync_PreservesCatalogTracks()
+    {
+        using var dbContext = CreateDbContext();
+
+        dbContext.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Temporary Playlist"
+        });
+
+        dbContext.Tracks.Add(new Track
+        {
+            Id = 10,
+            Title = "Demo Track",
+            FilePath = "/demo.mp3"
+        });
+
+        dbContext.PlaylistTracks.Add(new PlaylistTrack
+        {
+            PlaylistId = 1,
+            TrackId = 10,
+            Position = 1
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var service = new PlaylistService(dbContext);
+
+        var result = await service.DeletePlaylistAsync(1001, 1);
+
+        Assert.True(result);
+        Assert.Empty(await dbContext.Playlists.ToListAsync());
+
+        // Deleting a playlist must not delete catalog tracks.
+        var track = await dbContext.Tracks.SingleAsync();
+
+        Assert.Equal((ulong)10, track.Id);
+        Assert.Equal("Demo Track", track.Title);
+    }
+
 }

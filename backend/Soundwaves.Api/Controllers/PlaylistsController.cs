@@ -208,5 +208,51 @@ public class PlaylistsController : ControllerBase
             });
         }
     }
-}
 
+    // DELETE /api/playlists/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeletePlaylist(ulong id)
+    {
+        // Require a valid server-side identity.
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        // Reject invalid playlist identifiers.
+        if (id == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist ID must be greater than zero."
+            });
+        }
+
+        // Delete only a playlist owned by the current user.
+        bool deleted = await _playlistService.DeletePlaylistAsync(
+            userId.Value,
+            id);
+
+        if (!deleted)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Not Found",
+                Detail = "Playlist not found."
+            });
+        }
+
+        // Successful deletion returns no response body.
+        return NoContent();
+    }
+}
