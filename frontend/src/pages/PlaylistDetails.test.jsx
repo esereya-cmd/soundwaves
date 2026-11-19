@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
@@ -15,13 +16,13 @@ afterEach(() => {
 });
 
 describe("PlaylistDetails", () => {
+  // Existing playlist tests
+
   it("displays playlist details and tracks", () => {
     const playlist = {
       id: 1,
       name: "My Favorites",
-      tracks: [
-        { id: 1, title: "Sample Track" },
-      ],
+      tracks: [{ id: 1, title: "Sample Track" }],
     };
 
     render(<PlaylistDetails playlist={playlist} />);
@@ -102,9 +103,7 @@ describe("PlaylistDetails", () => {
       screen.getByText("Loading playlist...")
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("status")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("displays an error message", () => {
@@ -116,8 +115,185 @@ describe("PlaylistDetails", () => {
       screen.getByText("Unable to load playlist.")
     ).toBeInTheDocument();
 
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  // SCRUM-171: Remove Track tests
+
+  const playlist = {
+    id: 10,
+    name: "Study Playlist",
+    tracks: [
+      { id: 3, title: "Demo Tone A" },
+      { id: 4, title: "Demo Tone B" },
+    ],
+  };
+
+  it("shows Remove Track buttons for playlist tracks", () => {
+    render(<PlaylistDetails playlist={playlist} />);
+
     expect(
-      screen.getByRole("alert")
+      screen.getAllByRole("button", { name: "Remove Track" })
+    ).toHaveLength(2);
+  });
+
+  it("shows confirmation when Remove Track is clicked", () => {
+    render(<PlaylistDetails playlist={playlist} />);
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    expect(
+      screen.getByText("Remove Demo Tone A from this playlist?")
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: "Confirm Remove" })
+    ).toBeInTheDocument();
+  });
+
+  it("cancels removal without calling the callback", () => {
+    const mockRemove = vi.fn();
+
+    render(
+      <PlaylistDetails
+        playlist={playlist}
+        onRemoveTrack={mockRemove}
+      />
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancel" })
+    );
+
+    expect(mockRemove).not.toHaveBeenCalled();
+
+    expect(
+      screen.queryByRole("button", { name: "Confirm Remove" })
+    ).not.toBeInTheDocument();
+
+    expect(screen.getByText("Demo Tone A")).toBeInTheDocument();
+  });
+
+  it("calls onRemoveTrack with playlist and track IDs", async () => {
+    const mockRemove = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <PlaylistDetails
+        playlist={playlist}
+        onRemoveTrack={mockRemove}
+      />
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm Remove" })
+    );
+
+    await waitFor(() => {
+      expect(mockRemove).toHaveBeenCalledWith(10, 3);
+    });
+
+    expect(mockRemove).toHaveBeenCalledTimes(1);
+
+    expect(
+      await screen.findByText(
+        "Remove request completed. Refresh playlist details to confirm."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("shows an error if removal fails", async () => {
+    const mockRemove = vi.fn().mockRejectedValue(
+      new Error("Backend unavailable")
+    );
+
+    render(
+      <PlaylistDetails
+        playlist={playlist}
+        onRemoveTrack={mockRemove}
+      />
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm Remove" })
+    );
+
+    expect(
+      await screen.findByRole("alert")
+    ).toHaveTextContent(
+      "Unable to remove track from playlist. Please try again."
+    );
+  });
+
+  it("shows an error if the remove callback is not connected", async () => {
+    render(<PlaylistDetails playlist={playlist} />);
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm Remove" })
+    );
+
+    expect(
+      await screen.findByRole("alert")
+    ).toHaveTextContent(
+      "Unable to remove track from playlist. Please try again."
+    );
+  });
+
+  it("prevents duplicate removal while waiting", async () => {
+    let finishRemoval;
+
+    const mockRemove = vi.fn().mockImplementation(
+      () => new Promise((resolve) => {
+        finishRemoval = resolve;
+      })
+    );
+
+    render(
+      <PlaylistDetails
+        playlist={playlist}
+        onRemoveTrack={mockRemove}
+      />
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove Track" })[0]
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm Remove" })
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Removing..." })
+    ).toBeDisabled();
+
+    expect(mockRemove).toHaveBeenCalledTimes(1);
+
+    finishRemoval();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Remove request completed. Refresh playlist details to confirm."
+        )
+      ).toBeInTheDocument();
+    });
   });
 });
