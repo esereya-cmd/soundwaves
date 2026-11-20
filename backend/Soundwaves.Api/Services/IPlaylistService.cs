@@ -35,4 +35,20 @@ public interface IPlaylistService
         ulong userId,
         ulong playlistId,
         ulong trackId);
+
+
+    // Remove a track from a playlist owned by the user.
+    // Returns false if the playlist or association is missing.
+    Task<bool> RemoveTrackFromPlaylistAsync(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId);
+
+    // Reorder the tracks in a playlist owned by the user.
+    // Returns false if the playlist does not exist or is inaccessible.
+    Task<bool> ReorderPlaylistTracksAsync(
+        ulong userId,
+        ulong playlistId,
+        IReadOnlyList<ulong> trackIds);
+
 }
