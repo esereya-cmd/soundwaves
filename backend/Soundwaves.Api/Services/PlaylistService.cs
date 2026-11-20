@@ -272,5 +272,101 @@ public class PlaylistService : IPlaylistService
         return true;
     }
 
+    // Add an existing catalog track to a playlist.
+    public async Task<PlaylistTrackResponse?> AddTrackToPlaylistAsync(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId)
+    {
+        // Validate identifiers.
+        if (userId == 0)
+        {
+            throw new ArgumentException(
+                "A valid user ID is required.",
+                nameof(userId));
+        }
+
+        if (playlistId == 0)
+        {
+            throw new ArgumentException(
+                "A valid playlist ID is required.",
+                nameof(playlistId));
+        }
+
+        if (trackId == 0)
+        {
+            throw new ArgumentException(
+                "A valid track ID is required.",
+                nameof(trackId));
+        }
+
+        // Verify that the playlist belongs to the current user.
+        bool playlistExists = await _dbContext.Playlists
+            .AnyAsync(p =>
+                p.Id == playlistId &&
+                p.UserId == userId);
+
+        if (!playlistExists)
+        {
+            return null;
+        }
+
+        // Verify that the track exists in the catalog.
+        var track = await _dbContext.Tracks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == trackId);
+
+        if (track == null)
+        {
+            return null;
+        }
+
+        // Prevent duplicate tracks within the same playlist.
+        bool duplicateExists = await _dbContext.PlaylistTracks
+            .AnyAsync(pt =>
+                pt.PlaylistId == playlistId &&
+                pt.TrackId == trackId);
+
+        if (duplicateExists)
+        {
+            throw new InvalidOperationException(
+                "This track is already in the playlist.");
+        }
+
+        // Determine the next available position.
+        uint maxPosition = await _dbContext.PlaylistTracks
+            .Where(pt => pt.PlaylistId == playlistId)
+            .Select(pt => (uint?)pt.Position)
+            .MaxAsync() ?? 0;
+
+        if (maxPosition == uint.MaxValue)
+        {
+            throw new InvalidOperationException(
+                "The playlist has reached its maximum track position.");
+        }
+
+        uint nextPosition = maxPosition + 1;
+
+        // Create the playlist-track relationship.
+        var playlistTrack = new PlaylistTrack
+        {
+            PlaylistId = playlistId,
+            TrackId = trackId,
+            Position = nextPosition,
+            AddedAt = DateTime.UtcNow
+        };
+
+        _dbContext.PlaylistTracks.Add(playlistTrack);
+
+        await _dbContext.SaveChangesAsync();
+
+        // Return the added track information.
+        return new PlaylistTrackResponse
+        {
+            Id = track.Id,
+            Title = track.Title,
+            Position = playlistTrack.Position
+        };
+    }
 
 }

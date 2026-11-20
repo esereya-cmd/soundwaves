@@ -255,4 +255,100 @@ public class PlaylistsController : ControllerBase
         // Successful deletion returns no response body.
         return NoContent();
     }
+
+    // POST /api/playlists/{id}/tracks
+    [HttpPost("{id}/tracks")]
+    public async Task<IActionResult> AddTrackToPlaylist(
+        ulong id,
+        [FromBody] AddPlaylistTrackRequest request)
+    {
+        // Require a valid server-side identity.
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        // Validate playlist ID.
+        if (id == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist ID must be greater than zero."
+            });
+        }
+
+        // Validate track ID.
+        if (request?.TrackId is null || request.TrackId.Value == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "A valid track ID is required."
+            });
+        }
+
+        // Verify playlist ownership before checking track existence.
+        var playlist = await _playlistService.GetPlaylistByIdAsync(
+            userId.Value,
+            id);
+
+        if (playlist == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Not Found",
+                Detail = "Playlist not found."
+            });
+        }
+
+        try
+        {
+            var addedTrack = await _playlistService.AddTrackToPlaylistAsync(
+                userId.Value,
+                id,
+                request.TrackId.Value);
+
+            if (addedTrack == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not Found",
+                    Detail = "Track not found."
+                });
+            }
+
+            return Ok(addedTrack);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Conflict",
+                Detail = ex.Message
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = ex.Message
+            });
+        }
+    }
+
 }
