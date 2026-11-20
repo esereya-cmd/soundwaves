@@ -238,4 +238,28 @@ public async Task SearchCatalogAsync_ReturnsEmpty_WhenNoMatches()
         Assert.Single(result.Tracks);
         Assert.Equal("Midnight Drive", result.Tracks.Single().Title);
     }
+
+    
+    // SCRUM-142: Verify partial artist name search.
+    [Fact]
+    public async Task SearchCatalogAsync_ReturnsArtistByPartialName()
+    {
+        using var db = CreateDbContext();
+
+        db.Artists.AddRange(
+            new Artist { Id = 1, Name = "Silver Echo" },
+            new Artist { Id = 2, Name = "Golden Waves" }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new MusicCatalogService(db);
+        var result = await service.SearchCatalogAsync("Echo");
+
+        Assert.Single(result.Artists);
+        Assert.Equal("Silver Echo", result.Artists.Single().Name);
+        Assert.Empty(result.Tracks);
+        Assert.Empty(result.Albums);
+    }
+
 }
