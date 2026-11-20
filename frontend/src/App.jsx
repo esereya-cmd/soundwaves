@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Catalog from "./pages/Catalog";
 import SongDetails from "./pages/SongDetails";
@@ -9,28 +9,9 @@ import PlaylistList from "./pages/PlaylistList";
 import PlaylistDetails from "./pages/PlaylistDetails";
 import CreatePlaylistForm from "./components/CreatePlaylistForm";
 import MusicPlayer from "./components/media/MusicPlayer";
+import { playlistApi } from "./services/playlistApi";
 
 import "./styles/playlist.css";
-
-// Temporary playlist data until the frontend is connected
-// to the backend Playlist API.
-const samplePlaylists = [
-  {
-    id: 1,
-    name: "My Favorites",
-    tracks: [
-      {
-        id: 1,
-        title: "Sample Track",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Chill Mix",
-    tracks: [],
-  },
-];
 
 function App() {
   const [selectedSong, setSelectedSong] = useState(null);
@@ -41,33 +22,106 @@ function App() {
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
-  // SCRUM-168: Create Playlist
-  // Backend integration is still pending.
-  async function handleCreatePlaylist() {
-    throw new Error("Playlist creation API is not connected yet.");
+  const [playlists, setPlaylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [playlistError, setPlaylistError] = useState("");
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+
+  // Load real playlists from the backend.
+  async function loadPlaylists() {
+    setIsLoading(true);
+    setPlaylistError("");
+
+    try {
+      const data = await playlistApi.getAll();
+      setPlaylists(Array.isArray(data) ? data : []);
+    } catch {
+      setPlaylistError("Unable to load playlists.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  // SCRUM-170: Add Track to Playlist
-  // Backend integration is still pending.
-  async function handleAddTrack() {
-    throw new Error("Add-to-playlist API is not connected yet.");
+  useEffect(() => {
+    loadPlaylists();
+  }, []);
+
+  // Retrieve playlist details, including tracks.
+  async function openPlaylist(id) {
+    setDetailsLoading(true);
+    setDetailsError("");
+
+    try {
+      const playlist = await playlistApi.getById(id);
+      setSelectedPlaylist(playlist);
+    } catch {
+      setDetailsError("Unable to load playlist details.");
+    } finally {
+      setDetailsLoading(false);
+    }
   }
 
-  // SCRUM-171: Remove Track from Playlist
-  // The UI is ready, but backend integration must be verified.
-  async function handleRemoveTrack() {
-    throw new Error("Remove-track backend integration is pending.");
+  // Create a playlist.
+  async function handleCreatePlaylist(name) {
+    await playlistApi.create(name);
+    await loadPlaylists();
   }
 
-  // Playlist pages
+  // Rename an existing playlist.
+  async function handleRenamePlaylist(id, name) {
+    const existing = await playlistApi.getById(id);
+
+    await playlistApi.update(
+      id,
+      name,
+      existing.description
+    );
+
+    await loadPlaylists();
+    await openPlaylist(id);
+  }
+
+  // Delete a playlist.
+  async function handleDeletePlaylist(id) {
+    await playlistApi.delete(id);
+    setSelectedPlaylist(null);
+    await loadPlaylists();
+  }
+
+  // Add an existing catalog track.
+  async function handleAddTrack(playlistId, trackId) {
+    await playlistApi.addTrack(playlistId, trackId);
+    await loadPlaylists();
+
+    if (selectedPlaylist?.id === playlistId) {
+      await openPlaylist(playlistId);
+    }
+  }
+
+  // Remove a track without deleting catalog music.
+  async function handleRemoveTrack(playlistId, trackId) {
+    await playlistApi.removeTrack(playlistId, trackId);
+    await openPlaylist(playlistId);
+  }
+
+  // Playlist pages.
   if (showPlaylists) {
     return (
       <>
-        {selectedPlaylist ? (
+        {selectedPlaylist || detailsLoading || detailsError ? (
           <PlaylistDetails
+            key={selectedPlaylist?.id ?? "loading"}
             playlist={selectedPlaylist}
-            onBack={() => setSelectedPlaylist(null)}
+            isLoading={detailsLoading}
+            error={detailsError}
+            onBack={() => {
+              setSelectedPlaylist(null);
+              setDetailsError("");
+            }}
             onSelectTrack={setSelectedTrack}
+            onRenamePlaylist={handleRenamePlaylist}
+            onDeletePlaylist={handleDeletePlaylist}
             onRemoveTrack={handleRemoveTrack}
           />
         ) : (
@@ -85,8 +139,12 @@ function App() {
             />
 
             <PlaylistList
-              playlists={samplePlaylists}
-              onSelectPlaylist={setSelectedPlaylist}
+              playlists={playlists}
+              isLoading={isLoading}
+              error={playlistError}
+              onSelectPlaylist={(playlist) =>
+                openPlaylist(playlist.id)
+              }
             />
           </>
         )}
@@ -96,7 +154,7 @@ function App() {
     );
   }
 
-  // Artist details
+  // Artist details.
   if (selectedArtist) {
     return (
       <>
@@ -105,13 +163,12 @@ function App() {
           onBack={() => setSelectedArtist(null)}
           onSelectTrack={setSelectedTrack}
         />
-
         <MusicPlayer selectedTrack={selectedTrack} />
       </>
     );
   }
 
-  // Album details
+  // Album details.
   if (selectedAlbum) {
     return (
       <>
@@ -120,13 +177,12 @@ function App() {
           onBack={() => setSelectedAlbum(null)}
           onSelectTrack={setSelectedTrack}
         />
-
         <MusicPlayer selectedTrack={selectedTrack} />
       </>
     );
   }
 
-  // Song details
+  // Song details.
   if (selectedSong) {
     return (
       <>
@@ -134,13 +190,12 @@ function App() {
           songId={selectedSong.id}
           onBack={() => setSelectedSong(null)}
         />
-
         <MusicPlayer selectedTrack={selectedTrack} />
       </>
     );
   }
 
-  // Main music catalog
+  // Main catalog.
   return (
     <>
       <button
@@ -158,7 +213,7 @@ function App() {
         }}
         onSelectAlbum={setSelectedAlbum}
         onSelectArtist={setSelectedArtist}
-        playlists={samplePlaylists}
+        playlists={playlists}
         onAddTrack={handleAddTrack}
       />
 
