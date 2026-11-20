@@ -42,7 +42,7 @@ function App() {
     setPlaylistError("");
 
     try {
-      const data = await playlistApi.getAll();
+      const data = await getPlaylists();
       setPlaylists(Array.isArray(data) ? data : []);
     } catch {
       setPlaylistError("Unable to load playlists.");
@@ -61,7 +61,7 @@ function App() {
     setDetailsError("");
 
     try {
-      const playlist = await playlistApi.getById(id);
+      const playlist = await getPlaylist(id);
       setSelectedPlaylist(playlist);
     } catch {
       setDetailsError("Unable to load playlist details.");
@@ -72,15 +72,15 @@ function App() {
 
   // Create a playlist.
   async function handleCreatePlaylist(name) {
-    await playlistApi.create(name);
+    await createPlaylist(name);
     await loadPlaylists();
   }
 
   // Rename an existing playlist.
   async function handleRenamePlaylist(id, name) {
-    const existing = await playlistApi.getById(id);
+    const existing = await getPlaylist(id);
 
-    await playlistApi.update(
+    await updatePlaylist(
       id,
       name,
       existing.description
@@ -92,14 +92,14 @@ function App() {
 
   // Delete a playlist.
   async function handleDeletePlaylist(id) {
-    await playlistApi.delete(id);
+    await deletePlaylist(id);
     setSelectedPlaylist(null);
     await loadPlaylists();
   }
 
   // Add an existing catalog track.
   async function handleAddTrack(playlistId, trackId) {
-    await playlistApi.addTrack(playlistId, trackId);
+    await addTrack(playlistId, trackId);
     await loadPlaylists();
 
     if (selectedPlaylist?.id === playlistId) {
@@ -109,7 +109,7 @@ function App() {
 
   // Remove a track without deleting catalog music.
   async function handleRemoveTrack(playlistId, trackId) {
-    await playlistApi.removeTrack(playlistId, trackId);
+    await removeTrack(playlistId, trackId);
     await openPlaylist(playlistId);
   }
 
