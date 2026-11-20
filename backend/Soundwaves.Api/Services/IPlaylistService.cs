@@ -30,4 +30,9 @@ public interface IPlaylistService
     Task<bool> DeletePlaylistAsync(
         ulong userId,
         ulong playlistId);
+
+    Task<PlaylistTrackResponse?> AddTrackToPlaylistAsync(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId);
 }

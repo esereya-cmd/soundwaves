@@ -732,4 +732,206 @@ public class PlaylistServiceTests
         Assert.Equal("Demo Track", track.Title);
     }
 
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_AddsExistingTrack()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.Tracks.Add(new Track
+        {
+            Id = 10,
+            Title = "Test Song",
+            FilePath = "/test.mp3"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.AddTrackToPlaylistAsync(
+            1001, 1, 10);
+
+        Assert.NotNull(result);
+        Assert.Equal((ulong)10, result.Id);
+        Assert.Equal("Test Song", result.Title);
+        Assert.Equal((uint)1, result.Position);
+
+        var saved = await db.PlaylistTracks.SingleAsync();
+
+        Assert.Equal((ulong)1, saved.PlaylistId);
+        Assert.Equal((ulong)10, saved.TrackId);
+        Assert.Equal((uint)1, saved.Position);
+    }
+
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_AssignsNextPosition()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.Tracks.AddRange(
+            new Track
+            {
+                Id = 10,
+                Title = "First Song",
+                FilePath = "/first.mp3"
+            },
+            new Track
+            {
+                Id = 20,
+                Title = "Second Song",
+                FilePath = "/second.mp3"
+            }
+        );
+
+        db.PlaylistTracks.Add(new PlaylistTrack
+        {
+            PlaylistId = 1,
+            TrackId = 10,
+            Position = 1
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.AddTrackToPlaylistAsync(
+            1001, 1, 20);
+
+        Assert.NotNull(result);
+        Assert.Equal((uint)2, result.Position);
+        Assert.Equal(2, await db.PlaylistTracks.CountAsync());
+    }
+
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_RejectsDuplicateTrack()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.Tracks.Add(new Track
+        {
+            Id = 10,
+            Title = "Test Song",
+            FilePath = "/test.mp3"
+        });
+
+        db.PlaylistTracks.Add(new PlaylistTrack
+        {
+            PlaylistId = 1,
+            TrackId = 10,
+            Position = 1
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.AddTrackToPlaylistAsync(1001, 1, 10));
+
+        Assert.Single(await db.PlaylistTracks.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_ReturnsNull_WhenTrackMissing()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.AddTrackToPlaylistAsync(
+            1001, 1, 999);
+
+        Assert.Null(result);
+        Assert.Empty(await db.PlaylistTracks.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_ReturnsNull_WhenPlaylistMissing()
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        var result = await service.AddTrackToPlaylistAsync(
+            1001, 999, 10);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AddTrackToPlaylistAsync_PreventsOtherUserAccess()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist"
+        });
+
+        db.Tracks.Add(new Track
+        {
+            Id = 10,
+            Title = "Test Song",
+            FilePath = "/test.mp3"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.AddTrackToPlaylistAsync(
+            1001, 2, 10);
+
+        Assert.Null(result);
+        Assert.Empty(await db.PlaylistTracks.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(0, 1, 10)]
+    [InlineData(1001, 0, 10)]
+    [InlineData(1001, 1, 0)]
+    public async Task AddTrackToPlaylistAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId)
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.AddTrackToPlaylistAsync(
+                userId, playlistId, trackId));
+    }
+
 }
