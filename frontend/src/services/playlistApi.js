@@ -1,21 +1,25 @@
 
-const API_BASE = "/api/playlists";
+const BASE_URL = "/api/playlists";
 
-async function request(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
+// Handle API responses and errors.
+async function handleResponse(response) {
   if (!response.ok) {
-    throw new Error(
-      `Playlist API request failed: ${response.status}`
-    );
+    let message = "Playlist request failed.";
+
+    if (response.status === 409) {
+      message = "This track is already in the playlist.";
+    } else if (response.status === 404) {
+      message = "Playlist or track not found.";
+    } else if (response.status === 401) {
+      message = "You are not authorized.";
+    } else if (response.status === 400) {
+      message = "Invalid playlist information.";
+    }
+
+    throw new Error(message);
   }
 
+  // DELETE operations may return no content.
   if (response.status === 204) {
     return null;
   }
@@ -23,46 +27,84 @@ async function request(url, options = {}) {
   return response.json();
 }
 
-export const playlistApi = {
-  getAll() {
-    return request(API_BASE);
-  },
+// Get all playlists.
+export async function getPlaylists() {
+  const response = await fetch(BASE_URL);
 
-  getById(id) {
-    return request(`${API_BASE}/${id}`);
-  },
+  return handleResponse(response);
+}
 
-  create(name, description = null) {
-    return request(API_BASE, {
-      method: "POST",
-      body: JSON.stringify({ name, description }),
-    });
-  },
+// Get one playlist with its tracks.
+export async function getPlaylist(id) {
+  const response = await fetch(`${BASE_URL}/${id}`);
 
-  update(id, name, description = null) {
-    return request(`${API_BASE}/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ name, description }),
-    });
-  },
+  return handleResponse(response);
+}
 
-  delete(id) {
-    return request(`${API_BASE}/${id}`, {
+// Create a playlist.
+export async function createPlaylist(name, description = null) {
+  const response = await fetch(BASE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      description,
+    }),
+  });
+
+  return handleResponse(response);
+}
+
+// Update a playlist's name and description.
+export async function updatePlaylist(id, name, description = null) {
+  const response = await fetch(`${BASE_URL}/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      description,
+    }),
+  });
+
+  return handleResponse(response);
+}
+
+// Delete a playlist.
+export async function deletePlaylist(id) {
+  const response = await fetch(`${BASE_URL}/${id}`, {
+    method: "DELETE",
+  });
+
+  return handleResponse(response);
+}
+
+// Add a track to a playlist.
+export async function addTrack(playlistId, trackId) {
+  const response = await fetch(`${BASE_URL}/${playlistId}/tracks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      trackId,
+    }),
+  });
+
+  return handleResponse(response);
+}
+
+// Remove a track from a playlist.
+export async function removeTrack(playlistId, trackId) {
+  const response = await fetch(
+    `${BASE_URL}/${playlistId}/tracks/${trackId}`,
+    {
       method: "DELETE",
-    });
-  },
+    }
+  );
 
-  addTrack(playlistId, trackId) {
-    return request(`${API_BASE}/${playlistId}/tracks`, {
-      method: "POST",
-      body: JSON.stringify({ trackId }),
-    });
-  },
-
-  removeTrack(playlistId, trackId) {
-    return request(
-      `${API_BASE}/${playlistId}/tracks/${trackId}`,
-      { method: "DELETE" }
-    );
-  },
-};
+  return handleResponse(response);
+}

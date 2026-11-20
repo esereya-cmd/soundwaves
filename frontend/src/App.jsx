@@ -9,7 +9,15 @@ import PlaylistList from "./pages/PlaylistList";
 import PlaylistDetails from "./pages/PlaylistDetails";
 import CreatePlaylistForm from "./components/CreatePlaylistForm";
 import MusicPlayer from "./components/media/MusicPlayer";
-import { playlistApi } from "./services/playlistApi";
+import {
+  getPlaylists,
+  getPlaylist,
+  createPlaylist,
+  updatePlaylist,
+  deletePlaylist,
+  addTrack,
+  removeTrack,
+} from "./services/playlistApi";
 
 import "./styles/playlist.css";
 
