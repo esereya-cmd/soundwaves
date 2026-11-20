@@ -1,4 +1,4 @@
-
+﻿
 name: Backend CI
 
 on:
@@ -58,6 +58,17 @@ jobs:
       # Step 6: Build the xUnit test project
       - name: Build backend tests
         run: dotnet build backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj --configuration Release --no-restore
+
+              # SCRUM-181: Execute playlist service validation tests.
+      # Fail CI if any playlist test fails.
+      - name: Run playlist service tests
+        run: >
+          dotnet test backend/Soundwaves.Api.Tests/Soundwaves.Api.Tests.csproj
+          --configuration Release
+          --no-build
+          --filter "FullyQualifiedName~PlaylistServiceTests"
+          --logger "trx;LogFileName=playlist-tests.trx"
+          --results-directory PlaylistTestResults
 
       # Step 7: Execute backend and streaming tests
       # Generate TRX evidence for the assessment.
