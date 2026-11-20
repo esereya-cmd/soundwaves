@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Soundwaves.Api.Data;
 using Soundwaves.Api.DTOs;
 using Soundwaves.Api.Models;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Soundwaves.Api.Services;
 
@@ -367,6 +368,159 @@ public class PlaylistService : IPlaylistService
             Title = track.Title,
             Position = playlistTrack.Position
         };
+    }
+
+    // Remove a track and close gaps in playlist positions.
+    public async Task<bool> RemoveTrackFromPlaylistAsync(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId)
+    {
+        if (userId == 0 || playlistId == 0 || trackId == 0)
+        {
+            throw new ArgumentException(
+                "User, playlist, and track IDs must be greater than zero.");
+        }
+
+        bool owned = await _dbContext.Playlists
+            .AnyAsync(p => p.Id == playlistId && p.UserId == userId);
+
+        if (!owned)
+            return false;
+
+        var existing = await _dbContext.PlaylistTracks
+            .AsNoTracking()
+            .Where(pt => pt.PlaylistId == playlistId)
+            .OrderBy(pt => pt.Position)
+            .ToListAsync();
+
+        if (!existing.Any(pt => pt.TrackId == trackId))
+            return false;
+
+        var remaining = existing
+            .Where(pt => pt.TrackId != trackId)
+            .ToList();
+
+        await ReplacePlaylistTrackPositionsAsync(
+            playlistId, remaining);
+
+        return true;
+    }
+
+    // Reorder all tracks using the exact submitted track IDs.
+    public async Task<bool> ReorderPlaylistTracksAsync(
+        ulong userId,
+        ulong playlistId,
+        IReadOnlyList<ulong> trackIds)
+    {
+        if (userId == 0 || playlistId == 0)
+        {
+            throw new ArgumentException(
+                "User and playlist IDs must be greater than zero.");
+        }
+
+        if (trackIds == null)
+        {
+            throw new ArgumentException(
+                "Track IDs are required.");
+        }
+
+        bool owned = await _dbContext.Playlists
+            .AnyAsync(p => p.Id == playlistId && p.UserId == userId);
+
+        if (!owned)
+            return false;
+
+        var existing = await _dbContext.PlaylistTracks
+            .AsNoTracking()
+            .Where(pt => pt.PlaylistId == playlistId)
+            .OrderBy(pt => pt.Position)
+            .ToListAsync();
+
+        if (trackIds.Count != existing.Count ||
+            trackIds.Distinct().Count() != trackIds.Count ||
+            !trackIds.OrderBy(id => id)
+                .SequenceEqual(existing.Select(pt => pt.TrackId)
+                    .OrderBy(id => id)))
+        {
+            throw new ArgumentException(
+                "Reorder request must contain exactly the existing track IDs.");
+        }
+
+        var lookup = existing.ToDictionary(pt => pt.TrackId);
+
+        var reordered = trackIds
+            .Select(id => lookup[id])
+            .ToList();
+
+        await ReplacePlaylistTrackPositionsAsync(
+            playlistId, reordered);
+
+        return true;
+    }
+
+    // Replace position records while preserving track associations.
+    private async Task ReplacePlaylistTrackPositionsAsync(
+        ulong playlistId,
+        IReadOnlyList<PlaylistTrack> orderedTracks)
+    {
+        // Relational databases require an atomic transaction.
+        bool relational = _dbContext.Database.IsRelational();
+
+        IDbContextTransaction? transaction = null;
+
+        if (relational)
+        {
+            transaction = await _dbContext.Database
+                .BeginTransactionAsync();
+        }
+
+        try
+        {
+            var current = await _dbContext.PlaylistTracks
+                .Where(pt => pt.PlaylistId == playlistId)
+                .ToListAsync();
+
+            _dbContext.PlaylistTracks.RemoveRange(current);
+
+            await _dbContext.SaveChangesAsync();
+
+            for (int i = 0; i < orderedTracks.Count; i++)
+            {
+                var original = orderedTracks[i];
+
+                _dbContext.PlaylistTracks.Add(new PlaylistTrack
+                {
+                    PlaylistId = playlistId,
+                    TrackId = original.TrackId,
+                    Position = checked((uint)(i + 1)),
+                    AddedAt = original.AddedAt
+                });
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+        catch
+        {
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync();
+            }
+
+            throw;
+        }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
     }
 
 }

@@ -934,4 +934,221 @@ public class PlaylistServiceTests
                 userId, playlistId, trackId));
     }
 
+    [Fact]
+    public async Task RemoveTrackFromPlaylistAsync_RemovesTrackAndRenumbers()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.PlaylistTracks.AddRange(
+            new PlaylistTrack { PlaylistId = 1, TrackId = 10, Position = 1 },
+            new PlaylistTrack { PlaylistId = 1, TrackId = 20, Position = 2 },
+            new PlaylistTrack { PlaylistId = 1, TrackId = 30, Position = 3 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.RemoveTrackFromPlaylistAsync(
+            1001, 1, 20);
+
+        Assert.True(result);
+
+        var tracks = await db.PlaylistTracks
+            .OrderBy(pt => pt.Position)
+            .ToListAsync();
+
+        Assert.Equal(2, tracks.Count);
+        Assert.Equal((ulong)10, tracks[0].TrackId);
+        Assert.Equal((uint)1, tracks[0].Position);
+        Assert.Equal((ulong)30, tracks[1].TrackId);
+        Assert.Equal((uint)2, tracks[1].Position);
+    }
+
+    [Fact]
+    public async Task RemoveTrackFromPlaylistAsync_ReturnsFalse_WhenMissing()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        Assert.False(
+            await service.RemoveTrackFromPlaylistAsync(1001, 1, 999));
+    }
+
+    [Fact]
+    public async Task RemoveTrackFromPlaylistAsync_PreventsOtherUserAccess()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist"
+        });
+
+        db.PlaylistTracks.Add(new PlaylistTrack
+        {
+            PlaylistId = 2,
+            TrackId = 10,
+            Position = 1
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        Assert.False(
+            await service.RemoveTrackFromPlaylistAsync(1001, 2, 10));
+
+        Assert.Single(await db.PlaylistTracks.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ReorderPlaylistTracksAsync_UpdatesPositions()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.PlaylistTracks.AddRange(
+            new PlaylistTrack { PlaylistId = 1, TrackId = 10, Position = 1 },
+            new PlaylistTrack { PlaylistId = 1, TrackId = 20, Position = 2 },
+            new PlaylistTrack { PlaylistId = 1, TrackId = 30, Position = 3 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.ReorderPlaylistTracksAsync(
+            1001, 1, new ulong[] { 30, 10, 20 });
+
+        Assert.True(result);
+
+        var tracks = await db.PlaylistTracks
+            .OrderBy(pt => pt.Position)
+            .ToListAsync();
+
+        Assert.Equal(
+            new ulong[] { 30, 10, 20 },
+            tracks.Select(pt => pt.TrackId));
+
+        Assert.Equal(
+            new uint[] { 1, 2, 3 },
+            tracks.Select(pt => pt.Position));
+    }
+
+    [Theory]
+    [InlineData(new ulong[] { 10, 10 })]
+    [InlineData(new ulong[] { 10 })]
+    [InlineData(new ulong[] { 10, 999 })]
+    public async Task ReorderPlaylistTracksAsync_RejectsInvalidTrackLists(
+        ulong[] trackIds)
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Test Playlist"
+        });
+
+        db.PlaylistTracks.AddRange(
+            new PlaylistTrack { PlaylistId = 1, TrackId = 10, Position = 1 },
+            new PlaylistTrack { PlaylistId = 1, TrackId = 20, Position = 2 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.ReorderPlaylistTracksAsync(
+                1001, 1, trackIds));
+
+        var tracks = await db.PlaylistTracks
+            .OrderBy(pt => pt.Position)
+            .ToListAsync();
+
+        Assert.Equal(
+            new ulong[] { 10, 20 },
+            tracks.Select(pt => pt.TrackId));
+    }
+
+    [Fact]
+    public async Task ReorderPlaylistTracksAsync_PreventsOtherUserAccess()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 2,
+            UserId = 2002,
+            Name = "Private Playlist"
+        });
+
+        db.PlaylistTracks.Add(new PlaylistTrack
+        {
+            PlaylistId = 2,
+            TrackId = 10,
+            Position = 1
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.ReorderPlaylistTracksAsync(
+            1001, 2, new ulong[] { 10 });
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ReorderPlaylistTracksAsync_AllowsEmptyPlaylist()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Empty Playlist"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var result = await service.ReorderPlaylistTracksAsync(
+            1001, 1, Array.Empty<ulong>());
+
+        Assert.True(result);
+        Assert.Empty(await db.PlaylistTracks.ToListAsync());
+    }
+
 }

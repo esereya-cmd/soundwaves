@@ -351,4 +351,118 @@ public class PlaylistsController : ControllerBase
         }
     }
 
+    // DELETE /api/playlists/{id}/tracks/{trackId}
+    [HttpDelete("{id}/tracks/{trackId}")]
+    public async Task<IActionResult> RemoveTrackFromPlaylist(
+        ulong id,
+        ulong trackId)
+    {
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        if (id == 0 || trackId == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist and track IDs must be greater than zero."
+            });
+        }
+
+        bool removed = await _playlistService.RemoveTrackFromPlaylistAsync(
+            userId.Value,
+            id,
+            trackId);
+
+        if (!removed)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Not Found",
+                Detail = "Playlist or track association not found."
+            });
+        }
+
+        return NoContent();
+    }
+
+    // PUT /api/playlists/{id}/tracks/reorder
+    [HttpPut("{id}/tracks/reorder")]
+    public async Task<IActionResult> ReorderPlaylistTracks(
+        ulong id,
+        [FromBody] ReorderPlaylistTracksRequest request)
+    {
+        ulong? userId = _currentUserService.GetCurrentUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Detail = "A valid user identity is required."
+            });
+        }
+
+        if (id == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Playlist ID must be greater than zero."
+            });
+        }
+
+        if (request?.TrackIds == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Track IDs are required."
+            });
+        }
+
+        try
+        {
+            bool reordered = await _playlistService.ReorderPlaylistTracksAsync(
+                userId.Value,
+                id,
+                request.TrackIds);
+
+            if (!reordered)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not Found",
+                    Detail = "Playlist not found."
+                });
+            }
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = ex.Message
+            });
+        }
+    }
+
 }
