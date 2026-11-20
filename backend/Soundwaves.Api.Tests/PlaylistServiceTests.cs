@@ -1151,4 +1151,130 @@ public class PlaylistServiceTests
         Assert.Empty(await db.PlaylistTracks.ToListAsync());
     }
 
+    [Fact]
+    public async Task CreatePlaylistAsync_RejectsNullRequest()
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => service.CreatePlaylistAsync(1001, null!));
+
+        Assert.Empty(await db.Playlists.ToListAsync());
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_RejectsNullRequest()
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => service.UpdatePlaylistAsync(1001, 1, null!));
+
+        Assert.Empty(await db.Playlists.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(0, 1, 10)]
+    [InlineData(1001, 0, 10)]
+    [InlineData(1001, 1, 0)]
+    public async Task RemoveTrackFromPlaylistAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId,
+        ulong trackId)
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.RemoveTrackFromPlaylistAsync(
+                userId, playlistId, trackId));
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1001, 0)]
+    public async Task ReorderPlaylistTracksAsync_RejectsInvalidIds(
+        ulong userId,
+        ulong playlistId)
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.ReorderPlaylistTracksAsync(
+                userId, playlistId, Array.Empty<ulong>()));
+    }
+
+    [Fact]
+    public async Task ReorderPlaylistTracksAsync_RejectsNullTrackList()
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.ReorderPlaylistTracksAsync(
+                1001, 1, null!));
+    }
+
+    [Fact]
+    public async Task CreatePlaylistAsync_AcceptsMaximumLengths()
+    {
+        using var db = CreateDbContext();
+        var service = new PlaylistService(db);
+
+        var request = new CreatePlaylistRequest
+        {
+            Name = new string('N', 255),
+            Description = new string('D', 1000)
+        };
+
+        var result = await service.CreatePlaylistAsync(
+            1001, request);
+
+        Assert.Equal(255, result.Name.Length);
+        Assert.Equal(1000, result.Description!.Length);
+
+        var saved = await db.Playlists.SingleAsync();
+
+        Assert.Equal(255, saved.Name.Length);
+        Assert.Equal(1000, saved.Description!.Length);
+    }
+
+    [Fact]
+    public async Task UpdatePlaylistAsync_AcceptsMaximumLengths()
+    {
+        using var db = CreateDbContext();
+
+        db.Playlists.Add(new Playlist
+        {
+            Id = 1,
+            UserId = 1001,
+            Name = "Original"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = new PlaylistService(db);
+
+        var request = new UpdatePlaylistRequest
+        {
+            Name = new string('N', 255),
+            Description = new string('D', 1000)
+        };
+
+        var result = await service.UpdatePlaylistAsync(
+            1001, 1, request);
+
+        Assert.NotNull(result);
+        Assert.Equal(255, result.Name.Length);
+        Assert.Equal(1000, result.Description!.Length);
+
+        var saved = await db.Playlists.SingleAsync();
+
+        Assert.Equal(255, saved.Name.Length);
+        Assert.Equal(1000, saved.Description!.Length);
+    }
+
 }
